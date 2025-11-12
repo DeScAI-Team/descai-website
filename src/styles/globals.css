@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: "Space Grotesk", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.gradient-bg {
+  position: absolute;
+  inset: -10% 0;
+  background:
+    radial-gradient(circle at 15% 35%, rgba(88, 33, 255, 0.45), transparent 50%),
+    radial-gradient(circle at 70% 20%, rgba(252, 92, 170, 0.4), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(44, 196, 255, 0.35), transparent 45%);
+  filter: blur(60px);
+  z-index: 0;
+}
+
+.noise-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='10' cy='20' r='1'/%3E%3Ccircle cx='70' cy='90' r='1'/%3E%3Ccircle cx='120' cy='40' r='1'/%3E%3Ccircle cx='30' cy='130' r='1'/%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.4;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.neon-blur {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  filter: blur(90px);
+  border-radius: 999px;
+  opacity: 0.7;
+}
+
+.panel-gradient {
+  position: relative;
+}
+
+.panel-gradient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
