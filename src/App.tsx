@@ -2,6 +2,7 @@ import FeaturedPanel from "@/components/FeaturedPanel";
 import InsightsPanel from "@/components/InsightsPanel";
 import Navbar from "@/components/Navbar";
 import PlatformPanel from "@/components/PlatformPanel";
+import TokenPanel from "@/components/TokenPanel";
 
 const App = () => {
   return (
@@ -14,7 +15,10 @@ const App = () => {
 
         <main className="grid w-full max-w-6xl gap-6 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
           <PlatformPanel />
-          <FeaturedPanel />
+          <div className="flex flex-col gap-6">
+            <FeaturedPanel />
+            <TokenPanel />
+          </div>
           <InsightsPanel />
         </main>
       </div>

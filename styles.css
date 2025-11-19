@@ -385,6 +385,118 @@ nav a:hover {
   font-size: 1rem;
 }
 
+.neon-panel {
+  position: relative;
+  border-radius: 36px;
+  padding: 4px;
+  background: linear-gradient(115deg, rgba(255, 58, 255, 0.9), rgba(131, 112, 255, 0.95));
+  box-shadow:
+    0 0 45px rgba(255, 67, 255, 0.55),
+    0 0 20px rgba(255, 255, 255, 0.2) inset;
+}
+
+.neon-panel-inner {
+  border-radius: 32px;
+  background: rgba(7, 0, 30, 0.95);
+  padding: 36px 32px;
+  box-shadow: inset 0 0 45px rgba(255, 255, 255, 0.06);
+}
+
+.neon-panel-inner--news {
+  background: radial-gradient(circle at 20% 0, rgba(35, 6, 60, 0.95), rgba(8, 0, 26, 0.95));
+}
+
+.neon-divider {
+  display: block;
+  width: 60px;
+  height: 2px;
+  margin: 12px auto 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 159, 255, 0.9), transparent);
+}
+
+.neon-panel-heading p {
+  font-family: "Press Start 2P", cursive;
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: #f8b6ff;
+  text-shadow:
+    0 0 20px rgba(255, 120, 255, 0.95),
+    0 0 30px rgba(182, 98, 255, 0.55);
+}
+
+.neon-news-list {
+  margin-top: 34px;
+  font-size: 0.95rem;
+  color: #f6e6ff;
+}
+
+.neon-news-item {
+  padding: 24px 0;
+}
+
+.neon-news-item.with-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.neon-news-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.neon-news-title {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #ff9cf5;
+}
+
+.neon-news-score {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.neon-news-body {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+}
+
+.neon-news-meta-line {
+  margin-top: 16px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+}
+
+.neon-news-meta-line span {
+  display: inline-block;
+  color: #ffbdf3;
+}
+
+@keyframes featuredScroll {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.featured-scroll {
+  animation: featuredScroll 12s linear infinite;
+}
+
 @media (max-width: 1100px) {
   .dashboard {
     grid-template-columns: 1fr;
