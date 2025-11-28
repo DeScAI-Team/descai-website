@@ -1,10 +1,9 @@
+@import url("https://fonts.googleapis.com/css2?family=Audiowide&display=swap");
+/* Neon header font - pulls Audiowide for a blocky outline look */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  color-scheme: dark;
-}
 
 body {
   font-family: "Space Grotesk", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -51,4 +50,121 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.35);
   pointer-events: none;
+}
+
+.neon-heading {
+  display: inline-block;
+  margin: 0 auto;
+  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #fdf9ff;
+  text-shadow:
+    0 0 2px rgba(255, 255, 255, 0.5),
+    0 0 4px rgba(255, 57, 249, 0.32),
+    0 0 8px rgba(255, 57, 249, 0.24),
+    0 0 12px rgba(255, 57, 249, 0.16);
+}
+
+.neon-heading-left {
+  margin: 0;
+}
+
+.neon-heading-compact {
+  display: inline-block;
+  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #fdf9ff;
+  -webkit-text-stroke: 1px rgba(255, 57, 249, 0.35);
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.4),
+    0 0 3px rgba(255, 57, 249, 0.24),
+    0 0 6px rgba(255, 57, 249, 0.18);
+}
+
+.neon-heading::selection {
+  background: rgba(255, 61, 253, 0.2);
+  text-shadow:
+    0 0 2px rgba(255, 255, 255, 0.5),
+    0 0 5px rgba(255, 61, 253, 0.35),
+    0 0 9px rgba(255, 61, 253, 0.25);
+}
+
+.neon-underline {
+  display: block;
+  margin: 10px auto 0;
+  width: 78px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 92, 249, 0) 0%, rgba(255, 92, 249, 0.7) 50%, rgba(255, 92, 249, 0) 100%);
+  box-shadow:
+    0 0 4px rgba(255, 92, 249, 0.18),
+    0 0 8px rgba(255, 92, 249, 0.12);
+}
+
+.featured-heading {
+  color: #ffffff;
+  -webkit-text-stroke: 0.5px #ff7df2;
+  text-shadow:
+    0 0 4px rgba(255, 255, 255, 0.35),
+    0 0 12px rgba(255, 125, 242, 0.3),
+    0 0 18px rgba(112, 198, 255, 0.18);
+}
+
+.featured-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  gap: 14px;
+  background: transparent;
+  color: #fdf9ff;
+  -webkit-text-stroke: 1px rgba(255, 57, 249, 0.82);
+  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-weight: 700;
+  font-size: 1.6rem;
+  text-transform: uppercase;
+  border-radius: 14px;
+  box-shadow: none;
+  letter-spacing: 0.22em;
+  text-shadow:
+    0 0 2px rgba(255, 255, 255, 0.65),
+    0 0 6px rgba(255, 57, 249, 0.45),
+    0 0 12px rgba(255, 57, 249, 0.32);
+}
+
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff rgba(255, 255, 255, 0.4);
+  scrollbar-gutter: stable;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 12px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #ffffff !important;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.55),
+    0 0 18px rgba(255, 255, 255, 0.4);
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #ffffff !important;
 }

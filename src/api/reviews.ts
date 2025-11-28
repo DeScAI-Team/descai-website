@@ -49,3 +49,15 @@ export async function fetchReviewById(id: string): Promise<Review> {
   }
   return review;
 }
+
+export async function searchReviews(term: string, limit = 8): Promise<ReviewListItem[]> {
+  const { restUrl, headers } = getConfig();
+  const trimmed = term.trim();
+  if (!trimmed) return [];
+  const encoded = encodeURIComponent(trimmed);
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.trunc(limit), 200) : 8;
+  const url = `${restUrl}/reviews?select=id,created_at,title,paper_id&or=(title.ilike.*${encoded}*,paper_id.ilike.*${encoded}*)&order=created_at.desc&limit=${safeLimit}`;
+  const res = await fetch(url, { headers });
+  const data = await safeJson<ReviewListItem[]>(res);
+  return data ?? [];
+}

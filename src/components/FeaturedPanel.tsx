@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchReviewById, fetchReviews } from "@/api/reviews";
-import type { Review, ReviewListItem } from "@/types/review";
+import type { Review } from "@/types/review";
 
 type RatingRow = { label: string; value: number | null };
-type Standout = { title: string; score: string; platform: string; date: string };
 
 const ratingColors: Record<string, string> = {
   Originality: "#ff4444",
@@ -63,12 +62,15 @@ const formatDate = (dateString?: string | null) => {
 };
 
 const FeaturedPanel = () => {
-  const [reviewList, setReviewList] = useState<ReviewListItem[]>([]);
   const [detailedReviews, setDetailedReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const clamp2 = { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" as const };
-  const clamp3 = { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" as const };
+  const clamp3: React.CSSProperties = {
+    display: "-webkit-box",
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden"
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +81,6 @@ const FeaturedPanel = () => {
       try {
         const list = await fetchReviews();
         if (cancelled) return;
-        setReviewList(list);
 
         const idsToFetch = list.slice(0, 5).map((item) => item.id);
         if (!idsToFetch.length) {
@@ -115,29 +116,6 @@ const FeaturedPanel = () => {
   }, []);
 
   const featuredReview = detailedReviews[0] ?? null;
-  const standoutCards: Standout[] = useMemo(
-    () =>
-      detailedReviews.slice(0, 2).map((review) => ({
-        title: review.title || "Untitled",
-        score: averageScore(review) !== null ? `${averageScore(review)}%` : "—",
-        platform: review.paper_id || "Unknown",
-        date: formatDate(review.created_at)
-      })),
-    [detailedReviews]
-  );
-
-  const marqueeItems = useMemo(() => {
-    const source: Array<Review | ReviewListItem> = detailedReviews.length ? detailedReviews : reviewList;
-    if (!source.length) return [];
-
-    return source.slice(0, 6).map((item) => {
-      const avg = "originality_score" in item ? averageScore(item as Review) : null;
-      return {
-        title: item.title || item.paper_id || "Untitled review",
-        score: avg !== null ? `${avg}%` : item.paper_id || "—"
-      };
-    });
-  }, [detailedReviews, reviewList]);
 
   const ratings: RatingRow[] = useMemo(() => {
     return [
@@ -160,7 +138,7 @@ const FeaturedPanel = () => {
   ];
 
   const SkeletonCard = () => (
-    <article className="space-y-6 rounded-[28px] border border-white/5 bg-[#0c0d23] p-8 shadow-inner shadow-white/5 animate-pulse">
+    <article className="space-y-6 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 shadow-inner shadow-white/5 animate-pulse">
       <div className="h-8 w-3/4 rounded-lg bg-white/10" />
       <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
         {[...Array(4)].map((_, idx) => (
@@ -181,16 +159,16 @@ const FeaturedPanel = () => {
   );
 
   return (
-    <section className="rounded-[36px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[5px] shadow-[0_0_45px_rgba(255,68,255,0.35)]">
-      <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#06051eea] px-8 py-10 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
+    <section className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_45px_rgba(255,68,255,0.35)]">
+      <div className="relative overflow-hidden rounded-[16px] border border-white/10 bg-[#060017]/95 px-4 pt-0 pb-4 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
         <div className="absolute inset-0 -z-10 opacity-50">
           <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#ff6bd5]" />
           <div className="neon-blur left-1/4 top-1/2 bg-[#7b9dff]" />
         </div>
 
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <h2 className="mx-auto max-w-md text-center font-display text-xl uppercase tracking-[0.3em] text-white drop-shadow-neon">
-            Featured Research
+        <div className="mb-1 -mt-4 flex items-center gap-4">
+          <h2 className="flex-1 max-w-none whitespace-nowrap text-center font-display text-[3.4rem] md:text-[3.8rem] uppercase tracking-[0.28em] text-white">
+            <span className="featured-chip inline-flex px-8">Featured Research</span>
           </h2>
           {loading && (
             <span className="text-xs uppercase tracking-[0.3em] text-white/60">Updating…</span>
@@ -206,16 +184,19 @@ const FeaturedPanel = () => {
         {loading && <SkeletonCard />}
 
         {!loading && !featuredReview && (
-          <article className="space-y-4 rounded-[28px] border border-white/5 bg-[#0c0d23] p-8 text-white/80 shadow-inner shadow-white/5">
+          <article className="space-y-4 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 text-white/80 shadow-inner shadow-white/5">
             <h3 className="text-2xl font-semibold">No featured review yet</h3>
             <p className="text-white/70">Add a review in Supabase to populate this section.</p>
           </article>
         )}
 
         {!loading && featuredReview && (
-          <article className="space-y-6 rounded-[28px] border border-white/5 bg-[#0c0d23] p-8 shadow-inner shadow-white/5">
+          <article className="space-y-6 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 shadow-inner shadow-white/5">
             <header className="space-y-3">
-              <h3 className="text-2xl font-semibold leading-tight" style={clamp3}>
+              <h3
+                className="font-display text-2xl md:text-[1.65rem] font-semibold leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
+                style={clamp3}
+              >
                 {featuredReview.title || "Untitled Review"}
               </h3>
               {featuredReview.paper_id && (
@@ -223,26 +204,29 @@ const FeaturedPanel = () => {
               )}
             </header>
 
-            <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-[1fr_1fr_1fr_auto] md:gap-5">
               {meta.map(({ label, value }) => (
                 <div key={label}>
-                  <dt className="text-white/60">{label}</dt>
+                  <dt className="text-white/60 whitespace-nowrap">{label}</dt>
                   <dd className="font-semibold leading-snug">{value}</dd>
                 </div>
               ))}
             </dl>
 
-            <section className="space-y-3 text-sm leading-relaxed text-white/80">
-              <div className="flex items-center justify-between gap-4">
+            <section className="space-y-4 text-sm leading-relaxed text-white/80">
+              <div className="flex items-baseline justify-between gap-3">
                 <h4 className="text-base uppercase tracking-[0.3em] text-white/70">Overview</h4>
-                <Link
-                  to={`/review/${featuredReview.id}`}
-                  className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] bg-white/10 text-white hover:border-white/40 hover:bg-white/15"
-                >
-                  View full review
-                </Link>
               </div>
-              <p style={clamp3}>{overviewText || "No summary available yet."}</p>
+              <p className="text-base leading-relaxed" style={clamp3}>
+                {overviewText || "No summary available yet."}
+              </p>
+              <Link
+                to={`/review/${featuredReview.id}`}
+                className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-[#ff9cf5] underline-offset-4 transition hover:text-white hover:underline"
+              >
+                Read the full review
+                <span aria-hidden className="text-white/60">→</span>
+              </Link>
             </section>
 
             <div className="grid grid-cols-5 gap-4 justify-items-center">
@@ -276,86 +260,8 @@ const FeaturedPanel = () => {
             </div>
           </article>
         )}
-
-        <article className="mt-8 rounded-[28px] border border-white/10 bg-[#08081e] p-6 text-white/80 shadow-inner shadow-white/5">
-          <div className="space-y-6 md:flex md:flex-nowrap md:gap-6 md:space-y-0">
-            {loading && (
-              <div className="flex min-w-0 flex-1 animate-pulse">
-                <div className="h-32 w-full rounded-[24px] bg-white/10" />
-              </div>
-            )}
-
-            {!loading && standoutCards[0] && (
-              <div className="flex min-w-0 flex-1">
-                <StandoutCard standout={standoutCards[0]} clampStyle={clamp3} />
-              </div>
-            )}
-
-            <div className="flex min-w-0 flex-[1.2] flex-col justify-center rounded-[24px] border border-white/10 bg-[#0d0f26] px-6 py-6 text-center text-sm text-white/70 md:border-x md:border-white/20">
-              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-white">Featured</p>
-              <div className="mt-4 max-h-64 overflow-y-auto pr-1">
-                <div className="featured-scroll space-y-3">
-                  {loading &&
-                    [...Array(5)].map((_, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-3 text-left font-semibold tracking-[0.15em] text-white/60"
-                      >
-                        <span className="h-4 w-40 rounded bg-white/10" />
-                        <span className="h-4 w-10 rounded bg-white/10" />
-                      </div>
-                    ))}
-                  {!loading && marqueeItems.length > 0
-                    ? marqueeItems.map(({ title, score }, index) => (
-                        <div
-                          key={`${title}-${index}`}
-                          className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 text-left text-white/85"
-                        >
-                          <span className="text-[0.95rem] font-semibold leading-tight" style={clamp2}>
-                            {title}
-                          </span>
-                          <span className="text-sm font-semibold text-white">{score}</span>
-                        </div>
-                      ))
-                    : null}
-                  {!loading && marqueeItems.length === 0 && (
-                    <p className="text-white/60">No recent featured research yet.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {!loading && standoutCards[1] && (
-              <div className="flex min-w-0 flex-1">
-                <StandoutCard standout={standoutCards[1]} clampStyle={clamp3} />
-              </div>
-            )}
-            {!loading && standoutCards.length === 0 && (
-              <div className="flex min-w-0 flex-1 items-center justify-center rounded-[24px] border border-white/10 bg-[#0f1028] px-6 py-5 text-center text-white/60">
-                No standout reviews yet.
-              </div>
-            )}
-          </div>
-        </article>
       </div>
     </section>
-  );
-};
-
-const StandoutCard = ({ standout, clampStyle }: { standout: Standout; clampStyle: React.CSSProperties }) => {
-  return (
-    <div className="flex h-full min-h-[340px] w-full flex-col overflow-hidden rounded-[28px] border border-white/15 bg-gradient-to-b from-white/10 via-white/5 to-[#0c0f2a] px-6 py-5 text-center text-white shadow-[inset_0_0_35px_rgba(255,255,255,0.08)]">
-      <div className="flex flex-1 flex-col items-center justify-between gap-5">
-        <p className="text-base font-semibold leading-snug tracking-[0.08em] text-white/85" style={clampStyle}>
-          {standout.title}
-        </p>
-        <div className="space-y-3 pb-2">
-          <div className="text-4xl font-semibold leading-none text-white md:text-5xl">{standout.score}</div>
-          <p className="text-sm font-semibold text-white/85 break-words">{standout.platform}</p>
-          <p className="text-xs text-white/60">{standout.date}</p>
-        </div>
-      </div>
-    </div>
   );
 };
 

@@ -5,16 +5,14 @@ const InsightsPanel = () => {
 
   return (
     <section className="flex flex-col gap-6">
-      <article className="rounded-[32px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
-        <div className="rounded-[28px] bg-[#060017]/95 px-7 py-9">
+      <article className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
+        <div className="rounded-[16px] bg-[#060017]/95 px-7 py-9">
           <div className="text-center">
-            <p className="font-display text-lg uppercase tracking-[0.45em] text-[#ffb6ff]">
-              New Research
-            </p>
-            <span className="mx-auto mt-3 block h-[2px] w-16 bg-gradient-to-r from-transparent via-[#ff9dff] to-transparent" />
+            <p className="neon-heading">Latest</p>
+            <span className="neon-underline" />
           </div>
 
-          <div className="mt-6 divide-y divide-white/15 text-sm text-white/85">
+          <div className="mt-4 divide-y divide-white/15 text-sm text-white/85">
             {newsItems.map((news) => (
               <article key={news.title} className="py-5">
                 <header className="flex items-start justify-between gap-4">
@@ -41,10 +39,10 @@ const InsightsPanel = () => {
         </div>
       </article>
 
-      <article className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#49112a] to-[#182c56] p-6 text-center text-sm leading-relaxed text-white/80">
-        <h4 className="text-xs uppercase tracking-[0.5em] text-white">DeSci SnapShots</h4>
+      <article className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[#49112a] to-[#182c56] p-6 text-center text-sm leading-relaxed text-white/80 min-h-[168px] flex flex-col justify-center">
+        <h4 className="text-xs uppercase tracking-[0.5em] text-white">DeScAI SnapShots</h4>
         <p className="mt-3">
-          Access past DeSci snapshots and donate for access to our most recent!
+          Access past DeScAI snapshots and donate for access to our most recent!
         </p>
       </article>
 

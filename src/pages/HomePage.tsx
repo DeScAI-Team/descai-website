@@ -3,6 +3,7 @@ import InsightsPanel from "@/components/InsightsPanel";
 import Navbar from "@/components/Navbar";
 import PlatformPanel from "@/components/PlatformPanel";
 import TokenPanel from "@/components/TokenPanel";
+import Footer from "@/components/Footer";
 
 const HomePage = () => {
   return (
@@ -21,6 +22,8 @@ const HomePage = () => {
           </div>
           <InsightsPanel />
         </main>
+
+        <Footer />
       </div>
     </div>
   );
