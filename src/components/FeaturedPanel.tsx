@@ -166,12 +166,14 @@ const FeaturedPanel = () => {
           <div className="neon-blur left-1/4 top-1/2 bg-[#7b9dff]" />
         </div>
 
-        <div className="mb-1 -mt-4 flex items-center gap-4">
+        <div className="mb-1 -mt-4 flex flex-wrap items-center gap-4">
           <h2 className="flex-1 max-w-none whitespace-nowrap text-center font-display text-[3.4rem] md:text-[3.8rem] uppercase tracking-[0.28em] text-white">
             <span className="featured-chip inline-flex px-8">Featured Research</span>
           </h2>
           {loading && (
-            <span className="text-xs uppercase tracking-[0.3em] text-white/60">Updating…</span>
+            <span className="ml-auto whitespace-nowrap text-xs uppercase tracking-[0.3em] text-white/60">
+              Updating…
+            </span>
           )}
         </div>
 

@@ -1,24 +1,36 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { platformGroups } from "@/data/content";
 
 const PlatformPanel = () => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     platformGroups.reduce((acc, group) => ({ ...acc, [group.title]: false }), {} as Record<string, boolean>)
   );
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [lockedListHeight, setLockedListHeight] = useState<number | null>(null);
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
+  useLayoutEffect(() => {
+    if (!lockedListHeight && listRef.current) {
+      setLockedListHeight(listRef.current.getBoundingClientRect().height);
+    }
+  }, [lockedListHeight]);
+
   return (
-    <section className="self-start rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
+    <section className="w-full rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
       <div className="flex flex-col gap-4 rounded-[16px] border border-white/10 bg-[#060017]/95 p-6 shadow-[inset_0_0_35px_rgba(255,255,255,0.06)]">
         <div className="text-center mt-3">
           <h3 className="neon-heading">By Platform</h3>
           <span className="neon-underline" />
         </div>
 
-        <div className="custom-scroll max-h-[420px] overflow-y-auto pr-2">
+        <div
+          ref={listRef}
+          className="custom-scroll overflow-y-auto"
+          style={lockedListHeight ? { height: lockedListHeight } : undefined}
+        >
           <div className="flex flex-col gap-3 text-sm">
             {platformGroups.map((group) => {
               const isOpen = openGroups[group.title];

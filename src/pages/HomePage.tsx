@@ -2,6 +2,7 @@ import FeaturedPanel from "@/components/FeaturedPanel";
 import InsightsPanel from "@/components/InsightsPanel";
 import Navbar from "@/components/Navbar";
 import PlatformPanel from "@/components/PlatformPanel";
+import SnapshotsPanel from "@/components/SnapshotsPanel";
 import TokenPanel from "@/components/TokenPanel";
 import Footer from "@/components/Footer";
 
@@ -14,8 +15,12 @@ const HomePage = () => {
       <div className="relative z-10 flex flex-col items-center gap-10">
         <Navbar />
 
-        <main className="grid w-full max-w-6xl gap-6 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
-          <PlatformPanel />
+        <main className="grid w-full max-w-6xl gap-6 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
+          <div className="flex h-full w-full flex-col items-center gap-6">
+            <PlatformPanel />
+            <SnapshotsPanel className="mt-auto" />
+          </div>
+
           <div className="flex flex-col gap-6">
             <FeaturedPanel />
             <TokenPanel />

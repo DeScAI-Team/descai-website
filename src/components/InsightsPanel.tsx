@@ -39,13 +39,6 @@ const InsightsPanel = () => {
         </div>
       </article>
 
-      <article className="rounded-[14px] border border-white/10 bg-gradient-to-br from-[#49112a] to-[#182c56] p-6 text-center text-sm leading-relaxed text-white/80 min-h-[168px] flex flex-col justify-center">
-        <h4 className="text-xs uppercase tracking-[0.5em] text-white">DeScAI SnapShots</h4>
-        <p className="mt-3">
-          Access past DeScAI snapshots and donate for access to our most recent!
-        </p>
-      </article>
-
     </section>
   );
 };
