@@ -16,9 +16,11 @@ const HomePage = () => {
         <Navbar />
 
         <main className="grid w-full max-w-6xl gap-6 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
-          <div className="flex h-full w-full flex-col items-center gap-6">
-            <PlatformPanel />
-            <SnapshotsPanel className="mt-auto" />
+          <div className="flex h-full w-full flex-col items-stretch gap-6 lg:min-h-0">
+            <div className="flex w-full">
+              <PlatformPanel className="h-full w-full" />
+            </div>
+            <SnapshotsPanel />
           </div>
 
           <div className="flex flex-col gap-6">

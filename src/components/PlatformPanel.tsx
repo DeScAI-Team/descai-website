@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { platformGroups } from "@/data/content";
 
 type PlatformPanelProps = {
@@ -10,6 +10,14 @@ const PlatformPanel = ({ className }: PlatformPanelProps) => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     platformGroups.reduce((acc, group) => ({ ...acc, [group.title]: true }), {} as Record<string, boolean>)
   );
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [lockedHeight, setLockedHeight] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (!lockedHeight && scrollRef.current) {
+      setLockedHeight(scrollRef.current.getBoundingClientRect().height);
+    }
+  }, [lockedHeight]);
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -28,7 +36,11 @@ const PlatformPanel = ({ className }: PlatformPanelProps) => {
           <span className="neon-underline" />
         </div>
 
-        <div className="custom-scroll min-h-0 flex-1 overflow-y-auto">
+        <div
+          ref={scrollRef}
+          className="custom-scroll overflow-y-auto"
+          style={lockedHeight ? { height: lockedHeight } : undefined}
+        >
           <div className="flex flex-col gap-3 text-sm">
             {platformGroups.map((group) => {
               return (

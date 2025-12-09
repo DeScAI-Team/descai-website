@@ -14,10 +14,6 @@ export const platformGroups = [
   {
     title: "Research Hub",
     items: [">The Neuromuscular...", ">Standing On Nate...", ">Nonsurgical Trea...", ">Transcriptomic A...", ">..."]
-  },
-  {
-    title: "Pump.Science",
-    items: [">RAPTOR", ">SOMNDOCS", ">SRULI", ">SPSILO", ">SEGS", ">..."]
   }
 ] as const;
 
