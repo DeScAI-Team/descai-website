@@ -139,8 +139,8 @@ const Navbar = () => {
             <Link className="transition hover:text-plasma-pink" to="/">
               Home
             </Link>
-            <Link className="transition hover:text-plasma-pink" to="/">
-              All Reviews
+            <Link className="transition hover:text-plasma-pink" to="/tokens">
+              All DeSci Tokens
             </Link>
             <Link className="transition hover:text-plasma-pink" to="/">
               About
@@ -159,8 +159,8 @@ const Navbar = () => {
             <Link className="transition hover:text-plasma-pink" to="/" onClick={() => setMobileOpen(false)}>
               Home
             </Link>
-            <Link className="transition hover:text-plasma-pink" to="/" onClick={() => setMobileOpen(false)}>
-              All Reviews
+            <Link className="transition hover:text-plasma-pink" to="/tokens" onClick={() => setMobileOpen(false)}>
+              All DeSci Tokens
             </Link>
             <Link className="transition hover:text-plasma-pink" to="/" onClick={() => setMobileOpen(false)}>
               About

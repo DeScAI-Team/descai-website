@@ -1,63 +1,84 @@
-import { projectTokens } from "@/data/content";
-import clsx from "clsx";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import TokenTable from "@/components/TokenTable";
+import { useDesciTokens } from "@/hooks/useDesciTokens";
+import type { TokenSortField } from "@/types/token";
+import { compareTokens, toggleSort, type SortState } from "@/utils/tokenSorting";
 
 const TokenPanel = () => {
-  const formatPrice = (price: string) => {
-    const num = Number(price.replace(/[^0-9.-]/g, ""));
-    if (Number.isNaN(num)) return price;
-    return `$${num.toFixed(3)}`;
+  const [sort, setSort] = useState<SortState>({ field: "fdv", direction: "desc" });
+  const { tokens, loading, refreshing, error, lastMarketUpdate, refreshNow } = useDesciTokens({ mode: "home" });
+  const realDataTokens = useMemo(
+    () =>
+      tokens.filter(
+        (token) =>
+          token.chain !== "unknown" &&
+          token.coinKey &&
+          (token.market?.price ?? 0) > 0 &&
+          (token.market?.fdv ?? 0) > 0 &&
+          token.market?.price !== null &&
+          token.market?.price !== undefined &&
+          token.market?.priceChange24h !== null &&
+          token.market?.priceChange24h !== undefined &&
+          token.market?.fdv !== null &&
+          token.market?.fdv !== undefined
+      ),
+    [tokens]
+  );
+
+  const topTokens = useMemo(
+    () => [...realDataTokens].sort((left, right) => compareTokens(left, right, sort)).slice(0, 8),
+    [realDataTokens, sort]
+  );
+
+  const onSortChange = (field: TokenSortField) => {
+    setSort((current) => toggleSort(current, field));
   };
 
-  const formatChange = (change: string) => {
-    const num = Number(change.replace(/[^0-9.-]/g, ""));
-    if (Number.isNaN(num)) return change;
-    const sign = change.trim().startsWith("-") ? "-" : "";
-    return `${sign}${Math.abs(num).toFixed(2)}%`;
-  };
+  const formattedUpdate = lastMarketUpdate
+    ? new Date(lastMarketUpdate).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : "—";
 
   return (
     <article className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
       <div className="rounded-[16px] bg-[#050018]/95 px-6 py-7">
-        <header className="flex items-center justify-between text-white">
+        <header className="flex flex-wrap items-center justify-between gap-3 text-white">
           <h4 className="neon-heading neon-heading-left text-left text-lg">Project Tokens</h4>
-          <div className="flex gap-2 text-sm text-white/70">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10">↗</span>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10">≡</span>
+          <div className="flex items-center gap-2 text-sm text-white/70">
+            <button
+              type="button"
+              className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.16em] hover:bg-white/15"
+              onClick={() => void refreshNow()}
+              disabled={refreshing}
+            >
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
+            <Link
+              to="/tokens"
+              className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.16em] hover:bg-white/15"
+            >
+              View All
+            </Link>
           </div>
         </header>
 
-        <div className="mt-6 text-[0.65rem] uppercase tracking-[0.35em] text-white/40">
-          <div className="grid grid-cols-[0.9fr_2fr_0.9fr_0.8fr_0.7fr] justify-items-start gap-2 px-2 text-left">
-            <span className="block w-full">Ticker</span>
-            <span className="block w-full">Name</span>
-            <span className="block w-full">Price</span>
-            <span className="block w-full">24h</span>
-            <span className="block w-full">Chain</span>
-          </div>
-        </div>
+        <p className="mt-4 text-xs text-white/55">
+          Last market sync: {formattedUpdate} · auto refresh every minute
+        </p>
+        <p className="mt-1 text-xs text-white/45">Showing tokens with verified chain and complete market data.</p>
+        {refreshing && <p className="mt-1 text-xs text-[#ffcfef]">Refreshing live market data…</p>}
+        {loading && <p className="mt-4 text-sm text-white/65">Discovering DeSci tokens…</p>}
+        {error && <p className="mt-4 text-sm text-amber-200">{error}</p>}
 
-        <div className="mt-4 flex flex-col gap-3 text-sm text-white/80">
-          {projectTokens.map((token) => (
-            <div
-              key={token.ticker}
-              className="grid grid-cols-[0.9fr_2fr_0.9fr_0.8fr_0.7fr] items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#1a063a]/90 to-[#09001f]/80 px-4 py-3 text-left shadow-[inset_0_0_10px_rgba(255,255,255,0.04)]"
-            >
-              <span className="whitespace-nowrap font-semibold text-[#ffb9ff]">{token.ticker}</span>
-              <span className="min-w-0 truncate font-medium">{token.name}</span>
-              <span className="whitespace-nowrap text-white">{formatPrice(token.price)}</span>
-              <span
-                className={clsx(
-                  "font-semibold",
-                  token.trend === "up" ? "text-[#7affb2]" : "text-[#ff7a93]"
-                )}
-              >
-                {formatChange(token.change)}
-              </span>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-center text-xs uppercase tracking-[0.2em] text-white/70">
-                {token.chain}
-              </span>
-            </div>
-          ))}
+        <div className="mt-4">
+          <TokenTable
+            tokens={topTokens}
+            sort={sort}
+            onSortChange={onSortChange}
+            compact
+            showPlatform={false}
+            emptyMessage="No token data found yet. Check API keys and endpoint availability."
+          />
         </div>
       </div>
     </article>
