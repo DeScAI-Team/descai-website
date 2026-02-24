@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchReviewById } from "@/api/reviews";
+import { fetchReviewFromArweave } from "@/api/reviews";
 import Navbar from "@/components/Navbar";
 import type { Review, ReviewSection } from "@/types/review";
 
@@ -11,45 +11,46 @@ const formatDate = (dateString?: string | null) => {
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
-const toPercent = (value?: number | null) =>
-  typeof value === "number" && !Number.isNaN(value) ? Math.round(value * 100) : null;
-
-const averageScore = (review: Review | null) => {
+/** Compute average from the dynamic categories array, or from the average_score */
+const averageScore = (review: Review | null): number | null => {
   if (!review) return null;
-  const scores = [
-    review.originality_score,
-    review.clarity_score,
-    review.rigor_score,
-    review.reproducibility_score,
-    review.data_transparency_score,
-    review.interpretation_congruence_score,
-    review.field_familiarity_score
-  ].filter((s): s is number => typeof s === "number");
-
+  if (typeof review.average_score === "number") return review.average_score;
+  const cats = review.categories ?? [];
+  const scores = cats.map((c) => c.score).filter((s): s is number => typeof s === "number");
   if (!scores.length) return null;
-  const avg = scores.reduce((sum, value) => sum + value, 0) / scores.length;
-  return Math.round(avg * 100);
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 };
+
+const SCORE_COLORS = [
+  "#ff4444", "#3b8cff", "#52ff92", "#b546ff",
+  "#ff6b2d", "#f7e16a", "#00e5ff", "#ff79c6",
+  "#50fa7b", "#ffb86c"
+];
+
+const SECTION_ICONS = ["💡", "📝", "🔬", "📊", "⚖️", "🏛️", "🤝", "🔗", "🧬", "📈"];
+
+/**Convert underscores to spaces for readability*/
+const humanizeKey = (key: string): string =>
+  key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
 const SectionBlock = ({ title, icon, content }: { title: string; icon: string; content?: ReviewSection | null }) => {
   if (!content) return null;
 
-  const entries: Array<{ label: string; value?: string | boolean }> = [
-    { label: "Rationale", value: content.rationale as string },
-    { label: "Review Statement", value: content.review_statement as string },
-    { label: "Replication Caveats", value: content.replication_caveats as string },
-    { label: "Discipline Caveats", value: content.discipline_caveats as string },
-    { label: "Conflict of Interest", value: content.conflict_of_interest as boolean | undefined }
-  ];
+  // Dynamically collect every non-empty property from the section
+  const entries = Object.entries(content)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .map(([key, value]) => ({ label: humanizeKey(key), value }));
 
-  const hasContent = entries.some(({ value }) => value !== undefined && value !== null && value !== "");
-  if (!hasContent) return null;
+  if (!entries.length) return null;
 
-  const renderValue = (value: string | boolean | undefined) => {
-    if (typeof value === "boolean") {
-      return value ? "Conflicts noted" : "No conflicts noted";
-    }
-    return value;
+  const renderValue = (value: unknown) => {
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (typeof value === "number") return String(value);
+    if (typeof value === "string") return value;
+    return JSON.stringify(value);
   };
 
   return (
@@ -59,15 +60,12 @@ const SectionBlock = ({ title, icon, content }: { title: string; icon: string; c
         <h3 className="text-lg font-semibold text-white">{title}</h3>
       </header>
       <div className="mt-4 space-y-3 text-sm leading-relaxed text-white/80">
-        {entries.map(({ label, value }) => {
-          if (value === undefined || value === null || value === "") return null;
-          return (
-            <div key={label}>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/55">{label}</p>
-              <p className="mt-1 text-base text-white/90">{renderValue(value)}</p>
-            </div>
-          );
-        })}
+        {entries.map(({ label, value }) => (
+          <div key={label}>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/55">{label}</p>
+            <p className="mt-1 text-base text-white/90">{renderValue(value)}</p>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -112,7 +110,7 @@ const ReviewPage = () => {
       setLoading(true);
       setError(null);
       try {
-        const fetched = await fetchReviewById(id);
+        const fetched = await fetchReviewFromArweave(id);
         if (!cancelled) setReview(fetched);
       } catch (err) {
         if (!cancelled) setError((err as Error).message || "Failed to load review");
@@ -129,26 +127,27 @@ const ReviewPage = () => {
 
   const overallScore = useMemo(() => averageScore(review), [review]);
 
-  const scoreCards = useMemo(
-    () => [
-      { label: "Originality", value: toPercent(review?.originality_score), color: "#ff4444" },
-      { label: "Clarity", value: toPercent(review?.clarity_score), color: "#3b8cff" },
-      { label: "Rigor", value: toPercent(review?.rigor_score ?? review?.reproducibility_score), color: "#52ff92" },
-      { label: "Data Transparency", value: toPercent(review?.data_transparency_score), color: "#b546ff" },
-      { label: "Accuracy", value: toPercent(review?.interpretation_congruence_score), color: "#ff6b2d" },
-      { label: "Field Familiarity", value: toPercent(review?.field_familiarity_score), color: "#f7e16a" }
-    ],
-    [review]
-  );
+  /** Build score cards dynamically from existing categories */
+  const scoreCards = useMemo(() => {
+    const cats = review?.categories ?? [];
+    return cats.map((cat, idx) => ({
+      label: cat.label,
+      value: cat.score,
+      color: SCORE_COLORS[idx % SCORE_COLORS.length]
+    }));
+  }, [review]);
 
-  const narrative =
-    review?.originality_review?.review_statement ||
-    review?.originality_review?.rationale ||
-    review?.clarity_review?.review_statement ||
-    review?.clarity_review?.rationale ||
-    review?.rigor_reproducibility_review?.review_statement ||
-    review?.data_transparency_review?.review_statement ||
-    review?.interpretation_ethics_review?.review_statement;
+  /** Pick the first available review_statement or rationale as top narrative */
+  // "Potentially we could target a specfic category for the narrative? I don't know what we should look for however...
+  // ...Or if we should try looking from a different section in Review so I'll keep it similar to the orginal" -Andrew
+  const narrative = useMemo(() => {
+    for (const cat of review?.categories ?? []) {
+      const sec = cat.section;
+      if (sec?.review_statement) return sec.review_statement as string;
+      if (sec?.rationale) return sec.rationale as string;
+    }
+    return null;
+  }, [review]);
 
   const renderBody = () => {
     const wrap = (content: React.ReactNode) => (
@@ -250,16 +249,30 @@ const ReviewPage = () => {
           ))}
         </div>
 
+        {/*General info sections (key_strengths, areas_for_improvement, ...)*/}
+        {(review.info ?? []).length > 0 && (
+          <div className="mt-8 space-y-4">
+            {(review.info ?? []).map((item) => (
+              <SectionBlock
+                key={item.key}
+                title={item.label}
+                icon="📌"
+                content={item.content}
+              />
+            ))}
+          </div>
+        )}
+
+        {/*Dynamic section blocks for all categories*/}
         <div className="mt-10 space-y-5">
-          <SectionBlock title="Originality Review" icon="💡" content={review.originality_review} />
-          <SectionBlock title="Clarity Review" icon="📝" content={review.clarity_review} />
-          <SectionBlock
-            title="Rigor & Reproducibility Review"
-            icon="🔬"
-            content={review.rigor_reproducibility_review}
-          />
-          <SectionBlock title="Data Transparency Review" icon="📊" content={review.data_transparency_review} />
-          <SectionBlock title="Interpretation & Ethics Review" icon="⚖️" content={review.interpretation_ethics_review} />
+          {(review.categories ?? []).map((cat, idx) => (
+            <SectionBlock
+              key={cat.key}
+              title={cat.label}
+              icon={SECTION_ICONS[idx % SECTION_ICONS.length]}
+              content={cat.section}
+            />
+          ))}
         </div>
       </>
     );
