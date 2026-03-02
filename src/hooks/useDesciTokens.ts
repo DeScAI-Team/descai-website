@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiscoveredToken, TokenMarketSnapshot, TokenWithMarketData } from "@/types/token";
-import { getCachedMarketSnapshots, getDiscoveredTokens, mergeTokensWithMarket, pickRotationChunk, refreshSnapshots } from "@/services/desciTokens";
+import {
+  getCachedMarketSnapshots,
+  getDiscoveredTokens,
+  getLastDiscoveryReport,
+  mergeTokensWithMarket,
+  pickRotationChunk,
+  refreshSnapshots,
+  type DiscoveryReport
+} from "@/services/desciTokens";
 
 type UseDesciTokensOptions = {
   mode: "home" | "all";
@@ -15,6 +23,7 @@ type UseDesciTokensResult = {
   error: string | null;
   refreshNow: () => Promise<void>;
   lastMarketUpdate: number | null;
+  discoveryReport: DiscoveryReport | null;
 };
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -36,6 +45,7 @@ export const useDesciTokens = ({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(() => snapshotsTimestamp(getCachedMarketSnapshots()));
+  const [discoveryReport, setDiscoveryReport] = useState<DiscoveryReport | null>(() => getLastDiscoveryReport());
 
   const discoveredRef = useRef<DiscoveredToken[]>([]);
   const snapshotsRef = useRef<Record<string, TokenMarketSnapshot>>(snapshots);
@@ -81,10 +91,19 @@ export const useDesciTokens = ({
   }, [mode, prioritizedCoinKeys, rotationBatchSize]);
 
   const refreshNow = useCallback(async () => {
-    const targets = mode === "all" ? discoveredRef.current : buildRefreshTargets();
-    if (!targets.length) return;
     setRefreshing(true);
     try {
+      const latestDiscovered = await getDiscoveredTokens(true);
+      setDiscovered(latestDiscovered);
+      discoveredRef.current = latestDiscovered;
+      setDiscoveryReport(getLastDiscoveryReport());
+
+      const targets = latestDiscovered;
+      if (!targets.length) {
+        setError(null);
+        return;
+      }
+
       const merged = await refreshSnapshots(targets, snapshotsRef.current);
       setSnapshots(merged);
       setLastSyncAt(Date.now());
@@ -94,7 +113,7 @@ export const useDesciTokens = ({
     } finally {
       setRefreshing(false);
     }
-  }, [buildRefreshTargets, mode]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,8 +126,9 @@ export const useDesciTokens = ({
         const tokens = await getDiscoveredTokens(false);
         if (cancelled) return;
         setDiscovered(tokens);
+        setDiscoveryReport(getLastDiscoveryReport());
 
-        const initialTargets = mode === "all" ? tokens : tokens.slice(0, Math.min(tokens.length, 60));
+        const initialTargets = tokens;
         if (initialTargets.length) {
           const merged = await refreshSnapshots(initialTargets, snapshotsRef.current);
           if (!cancelled) {
@@ -161,6 +181,7 @@ export const useDesciTokens = ({
     refreshing,
     error,
     refreshNow,
-    lastMarketUpdate: lastSyncAt ?? snapshotsTimestamp(snapshots)
+    lastMarketUpdate: lastSyncAt ?? snapshotsTimestamp(snapshots),
+    discoveryReport
   };
 };

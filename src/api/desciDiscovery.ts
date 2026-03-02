@@ -1,12 +1,12 @@
 import type { DiscoveredToken, TokenPlatform, TokenSource } from "@/types/token";
 import { extractRecords, extractTokenCore, isRecord, looksLikeBioIpt } from "@/utils/tokenNormalization";
 
-const PUMP_DISCOVERY_URL = "https://pump.science/api/token-tickers";
-const BIODAO_DAOS_URL = "https://app.bio.xyz/api/liquid-daos";
-const BIODAO_AGENTS_URL = "https://app.bio.xyz/api/liquid-agents";
-const MOLECULE_GRAPHQL_ENDPOINT =
-  (import.meta.env.VITE_MOLECULE_GRAPHQL_ENDPOINT as string | undefined) ??
-  "https://production.graphql.api.molecule.xyz/graphql";
+const PUMP_DISCOVERY_URL = import.meta.env.DEV ? "/api/pump-science/api/token-tickers" : "https://pump.science/api/token-tickers";
+const BIODAO_DAOS_URL = import.meta.env.DEV ? "/api/bio/api/liquid-daos" : "https://app.bio.xyz/api/liquid-daos";
+const BIODAO_AGENTS_URL = import.meta.env.DEV ? "/api/bio/api/liquid-agents" : "https://app.bio.xyz/api/liquid-agents";
+const MOLECULE_GRAPHQL_ENDPOINT = import.meta.env.DEV
+  ? "/api/molecule/graphql"
+  : ((import.meta.env.VITE_MOLECULE_GRAPHQL_ENDPOINT as string | undefined) ?? "https://production.graphql.api.molecule.xyz/graphql");
 const MOLECULE_API_KEY = import.meta.env.VITE_MOLECULE_API_KEY as string | undefined;
 
 type JsonRecord = Record<string, unknown>;
@@ -38,6 +38,103 @@ type MoleculeIptRecord = {
 
 type MoleculeMarketRecord = NonNullable<MoleculeIptRecord["markets"]>[number];
 
+export type DiscoverySourceStatus = {
+  source: TokenSource;
+  platform: TokenPlatform;
+  status: "fulfilled" | "rejected";
+  rawCount: number;
+  normalizedCount: number;
+  error?: string;
+};
+
+export type DesciDiscoveryResult = {
+  tokens: DiscoveredToken[];
+  sources: DiscoverySourceStatus[];
+};
+
+const stringValue = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+const expandBioDaoRecords = (records: JsonRecord[]): JsonRecord[] => {
+  const expanded: JsonRecord[] = [];
+
+  for (const record of records) {
+    if (looksLikeBioIpt(record)) continue;
+
+    const tokenSymbol = stringValue(record.tokenSymbol);
+    const name = stringValue(record.name);
+    const tokenId = stringValue(record.tokenId);
+    const category = stringValue(record.category);
+    const logo = isRecord(record.logo) ? stringValue(record.logo.url) : null;
+    const bioLaunchpad = isRecord(record.bioLaunchpad) ? record.bioLaunchpad : null;
+    const amm = bioLaunchpad && isRecord(bioLaunchpad.amm) ? bioLaunchpad.amm : null;
+    const ammTokens = amm && Array.isArray(amm.tokens) ? amm.tokens.filter(isRecord) : [];
+
+    for (const ammToken of ammTokens) {
+      const address = stringValue(ammToken.address);
+      const chain = stringValue(ammToken.chain);
+      if (!address) continue;
+
+      expanded.push({
+        address,
+        chain,
+        symbol: tokenSymbol ?? undefined,
+        name: name ?? undefined,
+        tokenId: tokenId ?? undefined,
+        category: category ?? undefined,
+        logo: logo ?? undefined,
+        sourceRecord: record
+      });
+    }
+
+    if (ammTokens.length) continue;
+
+    const fallbackAddress = stringValue(record.tokenAddress);
+    const fallbackChain = stringValue(record.chain) ?? (bioLaunchpad ? stringValue(bioLaunchpad.chain) : null);
+    if (!fallbackAddress) continue;
+
+    expanded.push({
+      address: fallbackAddress,
+      chain: fallbackChain ?? undefined,
+      symbol: tokenSymbol ?? undefined,
+      name: name ?? undefined,
+      tokenId: tokenId ?? undefined,
+      category: category ?? undefined,
+      logo: logo ?? undefined,
+      sourceRecord: record
+    });
+  }
+
+  return expanded;
+};
+
+const expandBioAgentRecords = (records: JsonRecord[]): JsonRecord[] => {
+  const expanded: JsonRecord[] = [];
+
+  for (const record of records) {
+    if (looksLikeBioIpt(record)) continue;
+
+    const tokenAddress = stringValue(record.tokenAddress);
+    if (!tokenAddress) continue;
+
+    expanded.push({
+      address: tokenAddress,
+      chain: stringValue(record.chain) ?? undefined,
+      symbol: stringValue(record.tokenSymbol) ?? undefined,
+      name: stringValue(record.name) ?? undefined,
+      tokenId: stringValue(record.tokenId) ?? undefined,
+      category: stringValue(record.category) ?? undefined,
+      logo: isRecord(record.logo) ? stringValue(record.logo.url) ?? undefined : undefined,
+      sourceRecord: record
+    });
+  }
+
+  return expanded;
+};
+
 const safeFetchJson = async (url: string): Promise<unknown> => {
   const response = await fetch(url, { headers: { Accept: "application/json" } });
   if (!response.ok) {
@@ -55,7 +152,7 @@ const moleculeRequest = async <T>(query: string): Promise<T> => {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      "x-api-key": MOLECULE_API_KEY
+      ...(import.meta.env.DEV ? {} : { "x-api-key": MOLECULE_API_KEY })
     },
     body: JSON.stringify({ query })
   });
@@ -103,56 +200,52 @@ const fetchMoleculeRecords = async (): Promise<JsonRecord[]> => {
     }
   `;
 
-  try {
-    const data = await moleculeRequest<{ ipts?: MoleculeIptRecord[] }>(query);
-    const ipts = data.ipts ?? [];
-    return ipts
-      .map((ipt) => {
-        const markets = (ipt.markets ?? []).filter(Boolean) as MoleculeMarketRecord[];
-        const scoredMarkets = [...markets]
-          .filter((market) => (market.chainId ?? market.chain?.chainId) !== null && (market.chainId ?? market.chain?.chainId) !== undefined)
-          .sort((left, right) => {
-            const leftMcap = left.marketCapUsd ?? 0;
-            const rightMcap = right.marketCapUsd ?? 0;
-            if (rightMcap !== leftMcap) return rightMcap - leftMcap;
-            const leftVol = left.tradingVolume24hr ?? 0;
-            const rightVol = right.tradingVolume24hr ?? 0;
-            if (rightVol !== leftVol) return rightVol - leftVol;
-            const leftPrice = left.usdPrice ?? 0;
-            const rightPrice = right.usdPrice ?? 0;
-            return rightPrice - leftPrice;
-          });
+  const data = await moleculeRequest<{ ipts?: MoleculeIptRecord[] }>(query);
+  const ipts = data.ipts ?? [];
+  return ipts
+    .map((ipt) => {
+      const markets = (ipt.markets ?? []).filter(Boolean) as MoleculeMarketRecord[];
+      const scoredMarkets = [...markets]
+        .filter((market) => (market.chainId ?? market.chain?.chainId) !== null && (market.chainId ?? market.chain?.chainId) !== undefined)
+        .sort((left, right) => {
+          const leftMcap = left.marketCapUsd ?? 0;
+          const rightMcap = right.marketCapUsd ?? 0;
+          if (rightMcap !== leftMcap) return rightMcap - leftMcap;
+          const leftVol = left.tradingVolume24hr ?? 0;
+          const rightVol = right.tradingVolume24hr ?? 0;
+          if (rightVol !== leftVol) return rightVol - leftVol;
+          const leftPrice = left.usdPrice ?? 0;
+          const rightPrice = right.usdPrice ?? 0;
+          return rightPrice - leftPrice;
+        });
 
-        const selectedMarket =
-          scoredMarkets.find((market) => (market.usdPrice ?? 0) > 0 && (market.marketCapUsd ?? 0) > 0) ??
-          scoredMarkets.find((market) => (market.usdPrice ?? 0) > 0) ??
-          scoredMarkets[0];
+      const selectedMarket =
+        scoredMarkets.find((market) => (market.usdPrice ?? 0) > 0 && (market.marketCapUsd ?? 0) > 0) ??
+        scoredMarkets.find((market) => (market.usdPrice ?? 0) > 0) ??
+        scoredMarkets[0];
 
-        const chainId = selectedMarket?.chainId ?? selectedMarket?.chain?.chainId ?? undefined;
-        const chain = selectedMarket?.chain?.name ?? undefined;
+      const chainId = selectedMarket?.chainId ?? selectedMarket?.chain?.chainId ?? undefined;
+      const chain = selectedMarket?.chain?.name ?? undefined;
 
-        return {
-          address: ipt.l2TokenAddress ?? ipt.id ?? undefined,
-          symbol: ipt.metadata?.symbol ?? undefined,
-          name: ipt.metadata?.name ?? undefined,
-          chainId,
-          chain,
-          marketSeed: selectedMarket
-            ? {
-                price: (selectedMarket.usdPrice ?? 0) > 0 ? selectedMarket.usdPrice ?? null : null,
-                priceChange24h: selectedMarket.usdPrice24hrPercentageChange ?? null,
-                marketCap: (selectedMarket.marketCapUsd ?? 0) > 0 ? selectedMarket.marketCapUsd ?? null : null,
-                fdv: (selectedMarket.marketCapUsd ?? 0) > 0 ? selectedMarket.marketCapUsd ?? null : null,
-                volume24h: selectedMarket.tradingVolume24hr ?? null,
-                timestampMs: Date.now()
-              }
-            : undefined
-        } satisfies JsonRecord;
-      })
-      .filter((entry) => typeof entry.address === "string");
-  } catch {
-    return [];
-  }
+      return {
+        address: ipt.l2TokenAddress ?? ipt.id ?? undefined,
+        symbol: ipt.metadata?.symbol ?? undefined,
+        name: ipt.metadata?.name ?? undefined,
+        chainId,
+        chain,
+        marketSeed: selectedMarket
+          ? {
+              price: (selectedMarket.usdPrice ?? 0) > 0 ? selectedMarket.usdPrice ?? null : null,
+              priceChange24h: selectedMarket.usdPrice24hrPercentageChange ?? null,
+              marketCap: (selectedMarket.marketCapUsd ?? 0) > 0 ? selectedMarket.marketCapUsd ?? null : null,
+              fdv: (selectedMarket.marketCapUsd ?? 0) > 0 ? selectedMarket.marketCapUsd ?? null : null,
+              volume24h: selectedMarket.tradingVolume24hr ?? null,
+              timestampMs: Date.now()
+            }
+          : undefined
+      } satisfies JsonRecord;
+    })
+    .filter((entry) => typeof entry.address === "string");
 };
 
 type NormalizeOptions = {
@@ -233,7 +326,7 @@ const dedupeTokens = (tokens: DiscoveredToken[]): DiscoveredToken[] => {
   return Array.from(merged.values()).sort((left, right) => left.symbol.localeCompare(right.symbol));
 };
 
-export async function discoverAllDesciTokens(): Promise<DiscoveredToken[]> {
+export async function discoverAllDesciTokens(): Promise<DesciDiscoveryResult> {
   const settled = await Promise.allSettled([
     safeFetchJson(PUMP_DISCOVERY_URL),
     fetchMoleculeRecords(),
@@ -244,37 +337,105 @@ export async function discoverAllDesciTokens(): Promise<DiscoveredToken[]> {
   const [pumpResult, moleculeResult, bioDaosResult, bioAgentsResult] = settled;
 
   const tokens: DiscoveredToken[] = [];
+  const sources: DiscoverySourceStatus[] = [];
 
   if (pumpResult.status === "fulfilled") {
     const pumpRecords = extractRecords(pumpResult.value);
-    tokens.push(...normalizeRecords(pumpRecords, { platform: "Pump.Science", source: "pump_science" }));
+    const normalized = normalizeRecords(pumpRecords, { platform: "Pump.Science", source: "pump_science" });
+    tokens.push(...normalized);
+    sources.push({
+      source: "pump_science",
+      platform: "Pump.Science",
+      status: "fulfilled",
+      rawCount: pumpRecords.length,
+      normalizedCount: normalized.length
+    });
+  } else {
+    sources.push({
+      source: "pump_science",
+      platform: "Pump.Science",
+      status: "rejected",
+      rawCount: 0,
+      normalizedCount: 0,
+      error: pumpResult.reason instanceof Error ? pumpResult.reason.message : String(pumpResult.reason)
+    });
   }
 
   if (moleculeResult.status === "fulfilled") {
-    tokens.push(...normalizeRecords(moleculeResult.value, { platform: "Molecule", source: "molecule" }));
+    const normalized = normalizeRecords(moleculeResult.value, { platform: "Molecule", source: "molecule" });
+    tokens.push(...normalized);
+    sources.push({
+      source: "molecule",
+      platform: "Molecule",
+      status: "fulfilled",
+      rawCount: moleculeResult.value.length,
+      normalizedCount: normalized.length
+    });
+  } else {
+    sources.push({
+      source: "molecule",
+      platform: "Molecule",
+      status: "rejected",
+      rawCount: 0,
+      normalizedCount: 0,
+      error: moleculeResult.reason instanceof Error ? moleculeResult.reason.message : String(moleculeResult.reason)
+    });
   }
 
   if (bioDaosResult.status === "fulfilled") {
     const daoRecords = extractRecords(bioDaosResult.value);
-    tokens.push(
-      ...normalizeRecords(daoRecords, {
-        platform: "BioDAO",
-        source: "bio_dao_dao",
-        skipRecord: looksLikeBioIpt
-      })
-    );
+    const expanded = expandBioDaoRecords(daoRecords);
+    const normalized = normalizeRecords(expanded, {
+      platform: "BioDAO",
+      source: "bio_dao_dao"
+    });
+    tokens.push(...normalized);
+    sources.push({
+      source: "bio_dao_dao",
+      platform: "BioDAO",
+      status: "fulfilled",
+      rawCount: daoRecords.length,
+      normalizedCount: normalized.length
+    });
+  } else {
+    sources.push({
+      source: "bio_dao_dao",
+      platform: "BioDAO",
+      status: "rejected",
+      rawCount: 0,
+      normalizedCount: 0,
+      error: bioDaosResult.reason instanceof Error ? bioDaosResult.reason.message : String(bioDaosResult.reason)
+    });
   }
 
   if (bioAgentsResult.status === "fulfilled") {
     const agentRecords = extractRecords(bioAgentsResult.value);
-    tokens.push(
-      ...normalizeRecords(agentRecords, {
-        platform: "BioDAO",
-        source: "bio_dao_agent",
-        skipRecord: looksLikeBioIpt
-      })
-    );
+    const expanded = expandBioAgentRecords(agentRecords);
+    const normalized = normalizeRecords(expanded, {
+      platform: "BioDAO",
+      source: "bio_dao_agent"
+    });
+    tokens.push(...normalized);
+    sources.push({
+      source: "bio_dao_agent",
+      platform: "BioDAO",
+      status: "fulfilled",
+      rawCount: agentRecords.length,
+      normalizedCount: normalized.length
+    });
+  } else {
+    sources.push({
+      source: "bio_dao_agent",
+      platform: "BioDAO",
+      status: "rejected",
+      rawCount: 0,
+      normalizedCount: 0,
+      error: bioAgentsResult.reason instanceof Error ? bioAgentsResult.reason.message : String(bioAgentsResult.reason)
+    });
   }
 
-  return dedupeTokens(tokens);
+  return {
+    tokens: dedupeTokens(tokens),
+    sources
+  };
 }

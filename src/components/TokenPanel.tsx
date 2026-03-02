@@ -5,30 +5,25 @@ import { useDesciTokens } from "@/hooks/useDesciTokens";
 import type { TokenSortField } from "@/types/token";
 import { compareTokens, toggleSort, type SortState } from "@/utils/tokenSorting";
 
-const TokenPanel = () => {
+  const TokenPanel = () => {
   const [sort, setSort] = useState<SortState>({ field: "fdv", direction: "desc" });
-  const { tokens, loading, refreshing, error, lastMarketUpdate, refreshNow } = useDesciTokens({ mode: "home" });
-  const realDataTokens = useMemo(
+  const { tokens, loading, refreshing, error, lastMarketUpdate, refreshNow, discoveryReport } = useDesciTokens({ mode: "home" });
+
+  const topTokens = useMemo(
+    () => [...tokens].sort((left, right) => compareTokens(left, right, sort)).slice(0, 8),
+    [tokens, sort]
+  );
+
+  const tokensWithAnyMarketData = useMemo(
     () =>
       tokens.filter(
         (token) =>
-          token.chain !== "unknown" &&
-          token.coinKey &&
-          (token.market?.price ?? 0) > 0 &&
-          (token.market?.fdv ?? 0) > 0 &&
-          token.market?.price !== null &&
-          token.market?.price !== undefined &&
-          token.market?.priceChange24h !== null &&
-          token.market?.priceChange24h !== undefined &&
-          token.market?.fdv !== null &&
-          token.market?.fdv !== undefined
-      ),
+          token.market?.price != null ||
+          token.market?.priceChange24h != null ||
+          token.market?.fdv != null ||
+          token.market?.marketCap != null
+      ).length,
     [tokens]
-  );
-
-  const topTokens = useMemo(
-    () => [...realDataTokens].sort((left, right) => compareTokens(left, right, sort)).slice(0, 8),
-    [realDataTokens, sort]
   );
 
   const onSortChange = (field: TokenSortField) => {
@@ -38,6 +33,12 @@ const TokenPanel = () => {
   const formattedUpdate = lastMarketUpdate
     ? new Date(lastMarketUpdate).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : "—";
+  const discoveryTone =
+    discoveryReport?.mode === "live"
+      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+      : discoveryReport?.mode === "cache"
+        ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
+        : "border-rose-300/25 bg-rose-300/10 text-rose-100";
 
   return (
     <article className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
@@ -65,7 +66,23 @@ const TokenPanel = () => {
         <p className="mt-4 text-xs text-white/55">
           Last market sync: {formattedUpdate} · auto refresh every minute
         </p>
-        <p className="mt-1 text-xs text-white/45">Showing tokens with verified chain and complete market data.</p>
+        <p className="mt-1 text-xs text-white/45">
+          Showing the broadest discovered set. {tokensWithAnyMarketData} of {tokens.length} currently have at least some market data.
+        </p>
+        {discoveryReport && (
+          <div className={`mt-3 rounded-[12px] border px-3 py-2 text-xs ${discoveryTone}`}>
+            <p className="font-semibold">
+              {discoveryReport.mode === "live"
+                ? `Live discovery active: ${discoveryReport.tokenCount} tokens.`
+                : discoveryReport.mode === "cache"
+                  ? `Cached discovery data in use: ${discoveryReport.tokenCount} tokens.`
+                  : discoveryReport.mode === "legacy_cache"
+                    ? `Legacy cached discovery data in use: ${discoveryReport.tokenCount} tokens.`
+                    : `Fallback discovery data in use: ${discoveryReport.tokenCount} tokens.`}
+            </p>
+            {discoveryReport.reason && <p className="mt-1 opacity-85">{discoveryReport.reason}</p>}
+          </div>
+        )}
         {refreshing && <p className="mt-1 text-xs text-[#ffcfef]">Refreshing live market data…</p>}
         {loading && <p className="mt-4 text-sm text-white/65">Discovering DeSci tokens…</p>}
         {error && <p className="mt-4 text-sm text-amber-200">{error}</p>}
@@ -77,7 +94,7 @@ const TokenPanel = () => {
             onSortChange={onSortChange}
             compact
             showPlatform={false}
-            emptyMessage="No token data found yet. Check API keys and endpoint availability."
+            emptyMessage="No tokens discovered yet. Check API keys and endpoint availability."
           />
         </div>
       </div>

@@ -13,27 +13,10 @@ const AllTokensPage = () => {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortState>({ field: "fdv", direction: "desc" });
   const [page, setPage] = useState(1);
-  const { tokens, loading, refreshing, error, refreshNow, lastMarketUpdate } = useDesciTokens({
+  const { tokens, loading, refreshing, error, refreshNow, lastMarketUpdate, discoveryReport } = useDesciTokens({
     mode: "all",
     rotationBatchSize: 60
   });
-  const realDataTokens = useMemo(
-    () =>
-      tokens.filter(
-        (token) =>
-          token.chain !== "unknown" &&
-          token.coinKey &&
-          (token.market?.price ?? 0) > 0 &&
-          (token.market?.fdv ?? 0) > 0 &&
-          token.market?.price !== null &&
-          token.market?.price !== undefined &&
-          token.market?.priceChange24h !== null &&
-          token.market?.priceChange24h !== undefined &&
-          token.market?.fdv !== null &&
-          token.market?.fdv !== undefined
-      ),
-    [tokens]
-  );
 
   useEffect(() => {
     setPage(1);
@@ -42,11 +25,14 @@ const AllTokensPage = () => {
   const normalizedQuery = query.trim().toLowerCase();
 
   const filtered = useMemo(() => {
-    if (!normalizedQuery) return realDataTokens;
-    return realDataTokens.filter((token) =>
-      [token.symbol, token.name, token.platform, token.chain, token.address ?? ""].join(" ").toLowerCase().includes(normalizedQuery)
+    if (!normalizedQuery) return tokens;
+    return tokens.filter((token) =>
+      [token.symbol, token.name, token.platform, token.platforms.join(" "), token.chain, token.address ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery)
     );
-  }, [normalizedQuery, realDataTokens]);
+  }, [normalizedQuery, tokens]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((left, right) => compareTokens(left, right, sort));
@@ -57,15 +43,28 @@ const AllTokensPage = () => {
   const start = (currentPage - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE;
   const paginated = sorted.slice(start, end);
-  const withMarketData = filtered.filter(
-    (token) =>
-      token.market?.price !== null &&
-      token.market?.price !== undefined &&
-      token.market?.fdv !== null &&
-      token.market?.fdv !== undefined &&
-      token.market?.priceChange24h !== null &&
-      token.market?.priceChange24h !== undefined
-  ).length;
+  const marketCoverage = useMemo(() => {
+    let any = 0;
+    let complete = 0;
+
+    for (const token of tokens) {
+      const market = token.market;
+      const hasAny =
+        market?.price != null ||
+        market?.priceChange24h != null ||
+        market?.fdv != null ||
+        market?.marketCap != null;
+      const hasComplete =
+        market?.price != null &&
+        market?.priceChange24h != null &&
+        market?.fdv != null;
+
+      if (hasAny) any += 1;
+      if (hasComplete) complete += 1;
+    }
+
+    return { any, complete };
+  }, [tokens]);
 
   const handleSort = (field: TokenSortField) => {
     setSort((current) => toggleSort(current, field));
@@ -81,6 +80,26 @@ const AllTokensPage = () => {
         day: "numeric"
       })
     : "—";
+
+  const sourceStatusLabel = discoveryReport?.sources
+    ?.map((source) =>
+      source.status === "fulfilled"
+        ? `${source.platform}:${source.normalizedCount}`
+        : `${source.platform}:error`
+    )
+    .join(" · ");
+
+  const sourceErrorLabel = discoveryReport?.sources
+    ?.filter((source) => source.status === "rejected")
+    .map((source) => `${source.platform} failed`)
+    .join(" · ");
+
+  const discoveryTone =
+    discoveryReport?.mode === "live"
+      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+      : discoveryReport?.mode === "cache"
+        ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
+        : "border-rose-300/25 bg-rose-300/10 text-rose-100";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-midnight px-4 py-10 text-white">
@@ -126,12 +145,38 @@ const AllTokensPage = () => {
               </label>
               <div className="text-xs text-white/60">
                 <p>
-                  {filtered.length} token{filtered.length === 1 ? "" : "s"} | Live fields on {withMarketData}
+                  {filtered.length} token{filtered.length === 1 ? "" : "s"} | Any market data on {marketCoverage.any} | Full market fields on{" "}
+                  {marketCoverage.complete}
                 </p>
                 <p>Last market sync: {lastUpdateLabel}</p>
-                <p className="text-white/45">Only verified tokens with complete market data are shown.</p>
+                {discoveryReport && (
+                  <p>
+                    Discovery source: {discoveryReport.mode} ({discoveryReport.tokenCount} tokens)
+                    {discoveryReport.reason ? ` · ${discoveryReport.reason}` : ""}
+                  </p>
+                )}
+                {sourceStatusLabel && <p className="text-white/45">{sourceStatusLabel}</p>}
+                {sourceErrorLabel && <p className="text-amber-200/80">{sourceErrorLabel}</p>}
+                <p className="text-white/45">Discovered tokens stay visible even when DefiLlama has not returned every market field yet.</p>
               </div>
             </div>
+
+            {discoveryReport && (
+              <div className={`mt-4 rounded-[12px] border px-4 py-3 text-sm ${discoveryTone}`}>
+                <p className="font-semibold">
+                  {discoveryReport.mode === "live"
+                    ? `Live discovery active: ${discoveryReport.tokenCount} tokens found across platform APIs.`
+                    : discoveryReport.mode === "cache"
+                      ? `Cached discovery data in use: ${discoveryReport.tokenCount} tokens.`
+                      : discoveryReport.mode === "legacy_cache"
+                        ? `Legacy cached discovery data in use: ${discoveryReport.tokenCount} tokens.`
+                        : `Fallback discovery data in use: ${discoveryReport.tokenCount} tokens.`}
+                </p>
+                {discoveryReport.reason && <p className="mt-1 opacity-85">{discoveryReport.reason}</p>}
+                {sourceStatusLabel && <p className="mt-1 opacity-85">{sourceStatusLabel}</p>}
+                {sourceErrorLabel && <p className="mt-1">{sourceErrorLabel}</p>}
+              </div>
+            )}
 
             {loading && <p className="mt-4 text-sm text-white/70">Discovering tokens and loading market data…</p>}
             {refreshing && <p className="mt-2 text-xs text-[#ffcfef]">Refreshing live market data…</p>}

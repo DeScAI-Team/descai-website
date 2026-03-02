@@ -7,6 +7,11 @@ export type SortState = {
 
 const alphaCompare = (left: string, right: string) => left.localeCompare(right, undefined, { sensitivity: "base" });
 
+const platformLabel = (token: TokenWithMarketData) => {
+  if (token.platforms.length) return token.platforms.join(" / ");
+  return token.platform;
+};
+
 const compareNullableNumber = (left: number | null | undefined, right: number | null | undefined) => {
   const safeLeft = typeof left === "number" ? left : Number.NEGATIVE_INFINITY;
   const safeRight = typeof right === "number" ? right : Number.NEGATIVE_INFINITY;
@@ -24,7 +29,7 @@ export const compareTokens = (left: TokenWithMarketData, right: TokenWithMarketD
     case "chain":
       return direction * alphaCompare(left.chain, right.chain);
     case "platform":
-      return direction * alphaCompare(left.platform, right.platform);
+      return direction * alphaCompare(platformLabel(left), platformLabel(right));
     case "price":
       return direction * compareNullableNumber(left.market?.price, right.market?.price);
     case "priceChange24h":

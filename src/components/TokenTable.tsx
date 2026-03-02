@@ -11,6 +11,11 @@ type TokenTableProps = {
   emptyMessage?: string;
 };
 
+const platformLabel = (token: TokenWithMarketData) => {
+  if (token.platforms.length) return token.platforms.join(" / ");
+  return token.platform;
+};
+
 const currency = (value: number | null | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) return "—";
   if (Math.abs(value) >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
@@ -20,14 +25,12 @@ const currency = (value: number | null | undefined) => {
   return `$${value.toFixed(4)}`;
 };
 
-const price3Formatter = new Intl.NumberFormat(undefined, {
-  minimumFractionDigits: 3,
-  maximumFractionDigits: 3
-});
-
-const price3 = (value: number | null | undefined) => {
+const adaptivePrice = (value: number | null | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) return "—";
-  return `$${price3Formatter.format(value)}`;
+  if (Math.abs(value) >= 1) return `$${value.toFixed(3)}`;
+  if (Math.abs(value) >= 0.01) return `$${value.toFixed(4)}`;
+  if (Math.abs(value) >= 0.0001) return `$${value.toFixed(6)}`;
+  return `$${value.toFixed(8)}`;
 };
 
 const percent = (value: number | null | undefined) => {
@@ -105,14 +108,14 @@ const TokenTable = ({ tokens, sort, onSortChange, compact = false, showPlatform 
 
               {showPlatform && !compact && (
                 <span className="rounded-full bg-white/10 px-2 py-1 text-center text-[0.62rem] uppercase tracking-[0.12em] text-white/75">
-                  {token.platform}
+                  {platformLabel(token)}
                 </span>
               )}
 
               <span className="rounded-full bg-white/10 px-2 py-1 text-center text-[0.62rem] uppercase tracking-[0.12em] text-white/75">
                 {token.chain.toUpperCase()}
               </span>
-              <span className="whitespace-nowrap text-white">{price3(token.market?.price)}</span>
+              <span className="whitespace-nowrap text-white">{adaptivePrice(token.market?.price)}</span>
               <span className={clsx("whitespace-nowrap font-semibold", isPositive ? "text-[#7affb2]" : "text-[#ff7a93]")}>
                 {percent(token.market?.priceChange24h)}
               </span>
