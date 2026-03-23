@@ -1,0 +1,280 @@
+/* Theme Variables System for DeScAI Visual Refresh */
+/* Three variants: current (original), refresh-a (teal/minimal), refresh-b (cyan/fintech) */
+
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+/* ========================================
+   CURRENT THEME (Original Purple/Magenta)
+   ======================================== */
+:root,
+[data-theme="current"] {
+  /* Background colors */
+  --bg-base: #040516;
+  --bg-panel-1: #060017;
+  --bg-panel-2: #0c0d23;
+  --bg-panel-3: #050018;
+  
+  /* Gradient background */
+  --gradient-primary: radial-gradient(circle at 15% 35%, rgba(88, 33, 255, 0.45), transparent 50%),
+    radial-gradient(circle at 70% 20%, rgba(252, 92, 170, 0.4), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(44, 196, 255, 0.35), transparent 45%);
+  
+  /* Border colors */
+  --border-glow: linear-gradient(115deg, rgba(255, 58, 255, 0.9), rgba(131, 112, 255, 0.95));
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-panel: rgba(255, 255, 255, 0.08);
+  
+  /* Accent colors */
+  --accent-primary: #ff58e4;
+  --accent-secondary: #a14bff;
+  --accent-tertiary: #78d4ff;
+  --accent-heading: #ff9cf5;
+  --accent-link: #78d4ff;
+  
+  /* Text colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  --text-muted: rgba(255, 255, 255, 0.7);
+  --text-dim: rgba(255, 255, 255, 0.55);
+  
+  /* Status colors */
+  --status-positive: #7affb2;
+  --status-negative: #ff7a93;
+  --status-warning: #fcd587;
+  
+  /* Chain badge colors */
+  --chain-eth: rgba(255, 255, 255, 0.1);
+  --chain-base: rgba(255, 255, 255, 0.1);
+  --chain-sol: rgba(255, 255, 255, 0.1);
+  
+  /* Shadows */
+  --shadow-panel: 0 25px 60px rgba(1, 0, 22, 0.75);
+  --shadow-glow: 0 0 45px rgba(255, 68, 255, 0.35);
+  
+  /* Neon effects */
+  --neon-text-shadow: 0 0 2px rgba(255, 255, 255, 0.5),
+    0 0 4px rgba(255, 57, 249, 0.32),
+    0 0 8px rgba(255, 57, 249, 0.24),
+    0 0 12px rgba(255, 57, 249, 0.16);
+  
+  /* Typography */
+  --font-heading: "Audiowide", "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", monospace;
+  
+  /* Border radius */
+  --radius-panel: 20px;
+  --radius-card: 16px;
+  --radius-button: 9999px;
+  --radius-badge: 9999px;
+  
+  /* Table row alternate */
+  --row-alt-bg: transparent;
+}
+
+/* ========================================
+   REFRESH A THEME (Teal/Minimal)
+   Near-black background, teal accents, clean borders
+   ======================================== */
+[data-theme="refresh-a"] {
+  /* Background colors - subtle depth hierarchy */
+  --bg-base: #0d0d0f;
+  --bg-panel-1: #111114;
+  --bg-panel-2: #16161a;
+  --bg-panel-3: #1c1c22;
+  
+  /* Gradient background - subtle single-color radial glow */
+  --gradient-primary: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(0, 229, 204, 0.08), transparent 70%);
+  
+  /* Border colors - thin, low-opacity white */
+  --border-glow: transparent;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-panel: rgba(255, 255, 255, 0.06);
+  
+  /* Accent colors - teal as primary */
+  --accent-primary: #00e5cc;
+  --accent-secondary: #00c4b0;
+  --accent-tertiary: #4dd4c7;
+  --accent-heading: #e0e0e0;
+  --accent-link: #00e5cc;
+  
+  /* Text colors */
+  --text-primary: #f5f5f5;
+  --text-secondary: rgba(255, 255, 255, 0.9);
+  --text-muted: rgba(255, 255, 255, 0.65);
+  --text-dim: rgba(255, 255, 255, 0.45);
+  
+  /* Status colors - bolder contrast */
+  --status-positive: #00d68f;
+  --status-negative: #ff5a65;
+  --status-warning: #ffb547;
+  
+  /* Chain badge colors - chain-specific */
+  --chain-eth: rgba(136, 132, 216, 0.25);
+  --chain-base: rgba(0, 82, 255, 0.25);
+  --chain-sol: rgba(20, 241, 149, 0.25);
+  
+  /* Shadows - reduced */
+  --shadow-panel: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glow: none;
+  
+  /* Neon effects - disabled */
+  --neon-text-shadow: none;
+  
+  /* Typography - modern sans-serif */
+  --font-heading: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", monospace;
+  
+  /* Border radius - slightly tighter */
+  --radius-panel: 16px;
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-badge: 6px;
+  
+  /* Table row alternate */
+  --row-alt-bg: rgba(255, 255, 255, 0.02);
+}
+
+/* ========================================
+   REFRESH B THEME (Cyan/Fintech)
+   Dark background, cyan accents, professional feel
+   ======================================== */
+[data-theme="refresh-b"] {
+  /* Background colors - professional depth */
+  --bg-base: #0a0a0c;
+  --bg-panel-1: #0f1014;
+  --bg-panel-2: #14151a;
+  --bg-panel-3: #1a1b21;
+  
+  /* Gradient background - very subtle blue glow */
+  --gradient-primary: radial-gradient(ellipse 90% 50% at 50% 0%, rgba(56, 189, 248, 0.06), transparent 60%);
+  
+  /* Border colors */
+  --border-glow: transparent;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-panel: rgba(255, 255, 255, 0.07);
+  
+  /* Accent colors - cyan/sky blue */
+  --accent-primary: #38bdf8;
+  --accent-secondary: #0ea5e9;
+  --accent-tertiary: #7dd3fc;
+  --accent-heading: #f0f0f0;
+  --accent-link: #38bdf8;
+  
+  /* Text colors */
+  --text-primary: #fafafa;
+  --text-secondary: rgba(255, 255, 255, 0.88);
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-dim: rgba(255, 255, 255, 0.4);
+  
+  /* Status colors - financial style */
+  --status-positive: #22c55e;
+  --status-negative: #ef4444;
+  --status-warning: #f59e0b;
+  
+  /* Chain badge colors - chain-specific, more prominent */
+  --chain-eth: rgba(136, 132, 216, 0.3);
+  --chain-base: rgba(0, 82, 255, 0.3);
+  --chain-sol: rgba(20, 241, 149, 0.3);
+  
+  /* Shadows */
+  --shadow-panel: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 30px rgba(56, 189, 248, 0.1);
+  
+  /* Neon effects - subtle glow */
+  --neon-text-shadow: 0 0 8px rgba(56, 189, 248, 0.2);
+  
+  /* Typography */
+  --font-heading: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", monospace;
+  
+  /* Border radius - consistent */
+  --radius-panel: 14px;
+  --radius-card: 10px;
+  --radius-button: 8px;
+  --radius-badge: 6px;
+  
+  /* Table row alternate */
+  --row-alt-bg: rgba(255, 255, 255, 0.025);
+}
+
+/* ========================================
+   COMMON THEME UTILITIES
+   ======================================== */
+
+/* Panel with theme-aware border glow */
+.themed-panel-glow {
+  background: var(--border-glow);
+  padding: 3px;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-glow);
+}
+
+[data-theme="refresh-a"] .themed-panel-glow,
+[data-theme="refresh-b"] .themed-panel-glow {
+  background: transparent;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Panel inner */
+.themed-panel-inner {
+  background: var(--bg-panel-1);
+  border-radius: calc(var(--radius-panel) - 4px);
+  border: 1px solid var(--border-panel);
+}
+
+[data-theme="refresh-a"] .themed-panel-inner,
+[data-theme="refresh-b"] .themed-panel-inner {
+  border-radius: var(--radius-panel);
+}
+
+/* Themed headings */
+.themed-heading {
+  font-family: var(--font-heading);
+  color: var(--accent-heading);
+  text-shadow: var(--neon-text-shadow);
+}
+
+[data-theme="refresh-a"] .themed-heading,
+[data-theme="refresh-b"] .themed-heading {
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Themed monospace (for tickers, prices) */
+.themed-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chain badges with theme-aware colors */
+.chain-badge-eth {
+  background: var(--chain-eth);
+}
+
+.chain-badge-base {
+  background: var(--chain-base);
+}
+
+.chain-badge-sol {
+  background: var(--chain-sol);
+}
+
+/* Error banner - reduced prominence for refresh themes */
+[data-theme="refresh-a"] .error-banner,
+[data-theme="refresh-b"] .error-banner {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: var(--status-warning);
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+/* Table row alternating backgrounds */
+.table-row:nth-child(even) {
+  background: var(--row-alt-bg);
+}
