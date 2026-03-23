@@ -40,19 +40,20 @@ const Navbar = () => {
   }, [query]);
 
   return (
-    <header className="relative z-50 w-full max-w-6xl rounded-full border border-white/10 bg-gradient-to-r from-[#030514]/95 to-[#070c2a]/80 px-6 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+    <header className="relative z-50 w-full max-w-6xl rounded-full border border-border-panel bg-surface-sidebar/95 px-5 py-3 shadow-panel backdrop-blur-sm">
       <div className="relative z-50 flex items-center gap-4">
         <Link to="/" className="flex items-center gap-2">
           <img
             src="/DeScAI%20logo.jpg"
             alt="DeScAI logo"
-            className="h-14 w-14 rounded-full border border-white/10 bg-white/5 object-cover"
+            className="h-12 w-12 rounded-full border border-border bg-surface-subtle object-cover"
           />
         </Link>
-        <div className="relative flex-1 min-w-[220px]">
-          <label className="flex w-full items-center gap-3 rounded-full border border-white/10 bg-[#0c132f] px-4 py-2 text-sm text-white/70">
+        
+        <div className="relative flex-1 min-w-[200px]">
+          <label className="flex w-full items-center gap-3 rounded-full border border-border bg-surface-card px-4 py-2 text-sm text-content-muted">
             <input
-              className="w-full bg-transparent text-white placeholder:text-white/40 focus:outline-none"
+              className="w-full bg-transparent text-content-primary placeholder:text-content-dim focus:outline-none"
               placeholder="Search reviews..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -76,7 +77,7 @@ const Navbar = () => {
                   navigate(`/search?q=${encodeURIComponent(next)}`);
                 }
               }}
-              className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-white to-white/60 text-[#12163d]"
+              className="grid h-8 w-8 place-items-center rounded-full bg-accent-primary text-surface-base transition hover:opacity-90"
               aria-label="Search"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
@@ -84,36 +85,37 @@ const Navbar = () => {
               </svg>
             </button>
           </label>
+          
           {(results.length > 0 || loading || error) && (
-            <div className="absolute left-0 right-0 z-50 mt-2 rounded-[14px] border border-white/10 bg-[#0b0f2a]/95 p-3 text-sm shadow-[0_25px_60px_rgba(0,0,0,0.55)] backdrop-blur">
-              {loading && <p className="text-white/70">Searching…</p>}
-              {error && <p className="text-amber-200">{error}</p>}
+            <div className="absolute left-0 right-0 z-50 mt-2 rounded-[12px] border border-border-panel bg-surface-sidebar/98 p-3 text-sm shadow-panel backdrop-blur-sm">
+              {loading && <p className="text-content-muted">Searching...</p>}
+              {error && <p className="text-status-warning">{error}</p>}
               {!loading && !error && results.length === 0 && (
-                <p className="text-white/60">No matches found.</p>
+                <p className="text-content-subtle">No matches found.</p>
               )}
               {!loading && !error && results.length > 0 && (
-                <ul className="space-y-2">
+                <ul className="space-y-1.5">
                   {results.map((item) => (
                     <li key={item.id}>
                       <Link
                         to={`/review/${item.id}`}
-                        className="block rounded-[10px] px-3 py-2 hover:bg-white/5 text-white"
+                        className="block rounded-[8px] px-3 py-2 transition hover:bg-surface-elevated text-content-primary"
                         onClick={() => setResults([])}
                       >
                         <p className="font-semibold leading-tight">
                           {item.title || item.paper_id || "Untitled review"}
                         </p>
-                        <p className="text-xs text-white/60">Paper: {item.paper_id || "—"}</p>
+                        <p className="text-xs text-content-subtle font-mono">Paper: {item.paper_id || "—"}</p>
                       </Link>
                     </li>
                   ))}
                 </ul>
               )}
               {!loading && !error && query.trim().length >= 2 && (
-                <div className="mt-3 border-t border-white/10 pt-2 text-right">
+                <div className="mt-2.5 border-t border-border pt-2 text-right">
                   <Link
                     to={`/search?q=${encodeURIComponent(query.trim())}`}
-                    className="text-xs font-semibold text-[#ff9cf5] hover:text-white"
+                    className="text-xs font-semibold text-accent-link transition hover:text-content-primary"
                     onClick={() => setResults([])}
                   >
                     See all results →
@@ -126,7 +128,7 @@ const Navbar = () => {
 
         <div className="ml-auto flex items-center gap-3">
           <button
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10 lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-subtle text-content-muted transition hover:bg-surface-elevated lg:hidden"
             aria-label="Toggle menu"
             onClick={() => setMobileOpen((open) => !open)}
           >
@@ -135,37 +137,38 @@ const Navbar = () => {
               <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
             </svg>
           </button>
-          <nav className="hidden text-sm uppercase tracking-wide text-white/80 lg:flex lg:items-center lg:gap-6">
-            <Link className="transition hover:text-plasma-pink" to="/">
+          
+          <nav className="hidden text-sm uppercase tracking-wide text-content-muted lg:flex lg:items-center lg:gap-5">
+            <Link className="transition hover:text-accent-highlight" to="/">
               Home
             </Link>
-            <Link className="transition hover:text-plasma-pink" to="/tokens">
+            <Link className="transition hover:text-accent-highlight" to="/tokens">
               All DeSci Tokens
             </Link>
-            <Link className="transition hover:text-plasma-pink" to="/">
+            <Link className="transition hover:text-accent-highlight" to="/">
               About
             </Link>
           </nav>
 
-          <button className="hidden rounded-full border border-amber-200/50 bg-gradient-to-br from-[#221402] to-[#5b3600] px-5 py-2 text-sm font-semibold tracking-wider text-amber-100 shadow-[0_10px_25px_rgba(0,0,0,0.45)] lg:block">
+          <button className="hidden rounded-full border border-accent-primary/50 bg-accent-primary-dim px-4 py-2 text-sm font-semibold tracking-wider text-accent-primary shadow-panel transition hover:bg-accent-primary/20 lg:block">
             Connect Wallet
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="absolute right-6 top-[100%] mt-2 w-52 rounded-[14px] border border-white/10 bg-[#0c132f]/95 p-3 text-sm uppercase tracking-wide text-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.45)] lg:hidden">
+        <div className="absolute right-5 top-[100%] mt-2 w-48 rounded-[12px] border border-border-panel bg-surface-sidebar/98 p-3 text-sm uppercase tracking-wide text-content-muted shadow-panel backdrop-blur-sm lg:hidden">
           <nav className="flex flex-col gap-2">
-            <Link className="transition hover:text-plasma-pink" to="/" onClick={() => setMobileOpen(false)}>
+            <Link className="transition hover:text-accent-highlight" to="/" onClick={() => setMobileOpen(false)}>
               Home
             </Link>
-            <Link className="transition hover:text-plasma-pink" to="/tokens" onClick={() => setMobileOpen(false)}>
+            <Link className="transition hover:text-accent-highlight" to="/tokens" onClick={() => setMobileOpen(false)}>
               All DeSci Tokens
             </Link>
-            <Link className="transition hover:text-plasma-pink" to="/" onClick={() => setMobileOpen(false)}>
+            <Link className="transition hover:text-accent-highlight" to="/" onClick={() => setMobileOpen(false)}>
               About
             </Link>
-            <button className="mt-2 w-full rounded-full border border-amber-200/50 bg-gradient-to-br from-[#221402] to-[#5b3600] px-4 py-2 text-sm font-semibold tracking-wider text-amber-100 shadow-[0_10px_25px_rgba(0,0,0,0.45)]">
+            <button className="mt-2 w-full rounded-full border border-accent-primary/50 bg-accent-primary-dim px-4 py-2 text-sm font-semibold tracking-wider text-accent-primary">
               Connect Wallet
             </button>
           </nav>

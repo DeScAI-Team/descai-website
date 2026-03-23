@@ -43,6 +43,7 @@ const AllTokensPage = () => {
   const start = (currentPage - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE;
   const paginated = sorted.slice(start, end);
+  
   const marketCoverage = useMemo(() => {
     let any = 0;
     let complete = 0;
@@ -96,39 +97,41 @@ const AllTokensPage = () => {
 
   const discoveryTone =
     discoveryReport?.mode === "live"
-      ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-100"
+      ? "border-status-positive/25 bg-status-positive/10 text-status-positive"
       : discoveryReport?.mode === "cache"
-        ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
-        : "border-rose-300/25 bg-rose-300/10 text-rose-100";
+        ? "border-status-warning/25 bg-status-warning/10 text-status-warning"
+        : "border-status-negative/25 bg-status-negative/10 text-status-negative";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-midnight px-4 py-10 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-surface-base px-4 py-8 text-content-primary">
       <div className="gradient-bg pointer-events-none" aria-hidden="true" />
       <div className="noise-overlay" aria-hidden="true" />
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-8">
         <Navbar />
 
-        <section className="w-full space-y-4 rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
-          <div className="rounded-[16px] border border-white/10 bg-[#060017]/95 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+        <section className="panel-border w-full shadow-featured">
+          <div className="panel-inner p-5">
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Link
                   to="/"
-                  className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:border-white/40 hover:bg-white/15"
+                  className="rounded-full border border-border-panel bg-surface-subtle px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-content-primary transition hover:border-accent-primary hover:bg-surface-elevated"
                 >
                   Back
                 </Link>
-                <h1 className="text-xl font-semibold uppercase tracking-[0.2em] text-white md:text-2xl">All DeSci Tokens</h1>
+                <h1 className="text-lg font-semibold uppercase tracking-[0.15em] text-content-primary md:text-xl">
+                  All DeSci Tokens
+                </h1>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => void refreshNow()}
                   disabled={refreshing}
-                  className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white hover:bg-white/15 disabled:opacity-60"
+                  className="rounded-full border border-border-panel bg-surface-subtle px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-content-primary transition hover:border-accent-primary hover:bg-surface-elevated disabled:opacity-60"
                 >
-                  {refreshing ? "Refreshing…" : "Refresh"}
+                  {refreshing ? "Refreshing..." : "Refresh"}
                 </button>
               </div>
             </header>
@@ -140,29 +143,31 @@ const AllTokensPage = () => {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search by ticker, project, chain, platform, or address..."
-                  className="w-full rounded-[12px] border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#ff9cf5]"
+                  className="w-full rounded-[10px] border border-border bg-surface-subtle px-4 py-2.5 text-sm text-content-primary placeholder:text-content-dim focus:outline-none focus:ring-2 focus:ring-accent-primary"
                 />
               </label>
-              <div className="text-xs text-white/60">
+              <div className="text-xs text-content-subtle">
                 <p>
                   {filtered.length} token{filtered.length === 1 ? "" : "s"} | Any market data on {marketCoverage.any} | Full market fields on{" "}
                   {marketCoverage.complete}
                 </p>
-                <p>Last market sync: {lastUpdateLabel}</p>
+                <p>Last market sync: <span className="font-mono">{lastUpdateLabel}</span></p>
                 {discoveryReport && (
                   <p>
                     Discovery source: {discoveryReport.mode} ({discoveryReport.tokenCount} tokens)
                     {discoveryReport.reason ? ` · ${discoveryReport.reason}` : ""}
                   </p>
                 )}
-                {sourceStatusLabel && <p className="text-white/45">{sourceStatusLabel}</p>}
-                {sourceErrorLabel && <p className="text-amber-200/80">{sourceErrorLabel}</p>}
-                <p className="text-white/45">Discovered tokens stay visible even when DefiLlama has not returned every market field yet.</p>
+                {sourceStatusLabel && <p className="text-content-dim">{sourceStatusLabel}</p>}
+                {sourceErrorLabel && <p className="text-status-warning">{sourceErrorLabel}</p>}
+                <p className="text-content-dim">
+                  Discovered tokens stay visible even when DefiLlama has not returned every market field yet.
+                </p>
               </div>
             </div>
 
             {discoveryReport && (
-              <div className={`mt-4 rounded-[12px] border px-4 py-3 text-sm ${discoveryTone}`}>
+              <div className={`mt-4 rounded-[10px] border px-3 py-2.5 text-sm ${discoveryTone}`}>
                 <p className="font-semibold">
                   {discoveryReport.mode === "live"
                     ? `Live discovery active: ${discoveryReport.tokenCount} tokens found across platform APIs.`
@@ -178,9 +183,9 @@ const AllTokensPage = () => {
               </div>
             )}
 
-            {loading && <p className="mt-4 text-sm text-white/70">Discovering tokens and loading market data…</p>}
-            {refreshing && <p className="mt-2 text-xs text-[#ffcfef]">Refreshing live market data…</p>}
-            {error && <p className="mt-4 text-sm text-amber-200">{error}</p>}
+            {loading && <p className="mt-4 text-sm text-content-muted">Discovering tokens and loading market data...</p>}
+            {refreshing && <p className="mt-2 text-xs text-accent-highlight">Refreshing live market data...</p>}
+            {error && <p className="error-banner mt-4 text-sm">{error}</p>}
 
             <div className="mt-4">
               <TokenTable
@@ -192,7 +197,7 @@ const AllTokensPage = () => {
               />
             </div>
 
-            <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-white/70">
+            <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-content-muted">
               <p>
                 Showing {sorted.length ? start + 1 : 0}-{Math.min(end, sorted.length)} of {sorted.length}
               </p>
@@ -201,18 +206,18 @@ const AllTokensPage = () => {
                   type="button"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={currentPage <= 1}
-                  className="rounded-full border border-white/15 bg-white/10 px-3 py-1 uppercase tracking-[0.14em] hover:bg-white/15 disabled:opacity-40"
+                  className="rounded-full border border-border-panel bg-surface-subtle px-3 py-1 uppercase tracking-[0.12em] transition hover:bg-surface-elevated disabled:opacity-40"
                 >
                   Prev
                 </button>
-                <span className="rounded-full border border-white/10 px-3 py-1">
+                <span className="rounded-full border border-border px-3 py-1 font-mono">
                   Page {currentPage} / {totalPages}
                 </span>
                 <button
                   type="button"
                   onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                   disabled={currentPage >= totalPages}
-                  className="rounded-full border border-white/15 bg-white/10 px-3 py-1 uppercase tracking-[0.14em] hover:bg-white/15 disabled:opacity-40"
+                  className="rounded-full border border-border-panel bg-surface-subtle px-3 py-1 uppercase tracking-[0.12em] transition hover:bg-surface-elevated disabled:opacity-40"
                 >
                   Next
                 </button>

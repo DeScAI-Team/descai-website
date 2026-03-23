@@ -6,11 +6,11 @@ import type { Review } from "@/types/review";
 type RatingRow = { label: string; value: number | null };
 
 const ratingColors: Record<string, string> = {
-  Originality: "#ff4444",
-  "Data Transparency": "#b546ff",
-  Accuracy: "#ff6b2d",
-  Clarity: "#3b8cff",
-  Rigor: "#52ff92"
+  Originality: "var(--status-negative, #ef4444)",
+  "Data Transparency": "var(--accent-secondary, #a855f7)",
+  Accuracy: "var(--status-warning, #f59e0b)",
+  Clarity: "var(--status-info, #38bdf8)",
+  Rigor: "var(--status-positive, #22c55e)"
 };
 
 const toPercent = (value?: number | null) =>
@@ -138,47 +138,47 @@ const FeaturedPanel = () => {
   ];
 
   const SkeletonCard = () => (
-    <article className="space-y-6 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 shadow-inner shadow-white/5 animate-pulse">
-      <div className="h-8 w-3/4 rounded-lg bg-white/10" />
+    <article className="space-y-6 rounded-[14px] border border-border bg-surface-card p-5 animate-pulse">
+      <div className="h-8 w-3/4 rounded-lg bg-surface-elevated" />
       <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
         {[...Array(4)].map((_, idx) => (
           <div key={idx} className="space-y-2">
-            <div className="h-3 w-16 rounded bg-white/10" />
-            <div className="h-4 w-20 rounded bg-white/20" />
+            <div className="h-3 w-16 rounded bg-surface-elevated" />
+            <div className="h-4 w-20 rounded bg-surface-elevated" />
           </div>
         ))}
       </div>
-      <div className="h-4 w-24 rounded bg-white/10" />
-      <div className="h-16 rounded-2xl bg-white/10" />
+      <div className="h-4 w-24 rounded bg-surface-elevated" />
+      <div className="h-16 rounded-2xl bg-surface-elevated" />
       <div className="grid grid-cols-5 gap-4 justify-items-center">
         {[...Array(5)].map((_, idx) => (
-          <div key={idx} className="h-24 w-24 rounded-full bg-white/10" />
+          <div key={idx} className="h-20 w-20 rounded-full bg-surface-elevated" />
         ))}
       </div>
     </article>
   );
 
   return (
-    <section className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_45px_rgba(255,68,255,0.35)]">
-      <div className="relative overflow-hidden rounded-[16px] border border-white/10 bg-[#060017]/95 px-4 pt-0 pb-4 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
-        <div className="absolute inset-0 -z-10 opacity-50">
-          <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#ff6bd5]" />
-          <div className="neon-blur left-1/4 top-1/2 bg-[#7b9dff]" />
+    <section className="panel-border shadow-featured">
+      <div className="panel-inner relative overflow-hidden px-4 pt-0 pb-4 text-content-primary">
+        <div className="absolute inset-0 -z-10 opacity-30">
+          <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-accent-primary" />
+          <div className="neon-blur left-1/4 top-1/2 bg-accent-secondary" />
         </div>
 
-        <div className="mb-1 -mt-4 flex flex-wrap items-center gap-4">
-          <h2 className="flex-1 max-w-none whitespace-nowrap text-center font-display text-[3.4rem] md:text-[3.8rem] uppercase tracking-[0.28em] text-white">
-            <span className="featured-chip inline-flex px-8">Featured Research</span>
+        <div className="mb-1 -mt-3 flex flex-wrap items-center gap-4">
+          <h2 className="flex-1 max-w-none whitespace-nowrap text-center">
+            <span className="featured-chip inline-flex px-6">Featured Research</span>
           </h2>
           {loading && (
-            <span className="ml-auto whitespace-nowrap text-xs uppercase tracking-[0.3em] text-white/60">
-              Updating…
+            <span className="ml-auto whitespace-nowrap text-xs uppercase tracking-[0.25em] text-content-subtle">
+              Updating...
             </span>
           )}
         </div>
 
         {error && (
-          <p className="mb-4 rounded-full border border-amber-400/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-100">
+          <p className="error-banner mb-4">
             {error} — showing placeholders until data loads.
           </p>
         )}
@@ -186,74 +186,76 @@ const FeaturedPanel = () => {
         {loading && <SkeletonCard />}
 
         {!loading && !featuredReview && (
-          <article className="space-y-4 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 text-white/80 shadow-inner shadow-white/5">
-            <h3 className="text-2xl font-semibold">No featured review yet</h3>
-            <p className="text-white/70">Add a review in Supabase to populate this section.</p>
+          <article className="space-y-4 rounded-[14px] border border-border bg-surface-card p-5 text-content-muted">
+            <h3 className="text-xl font-semibold text-content-primary">No featured review yet</h3>
+            <p className="text-content-muted">Add a review in Supabase to populate this section.</p>
           </article>
         )}
 
         {!loading && featuredReview && (
-          <article className="space-y-6 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 shadow-inner shadow-white/5">
-            <header className="space-y-3">
+          <article className="space-y-5 rounded-[14px] border border-border bg-surface-card p-5">
+            <header className="space-y-2">
               <h3
-                className="font-display text-2xl md:text-[1.65rem] font-semibold leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
+                className="text-xl md:text-2xl font-semibold leading-tight tracking-tight text-content-primary"
                 style={clamp3}
               >
                 {featuredReview.title || "Untitled Review"}
               </h3>
               {featuredReview.paper_id && (
-                <p className="text-sm uppercase tracking-[0.2em] text-white/60">Paper ID: {featuredReview.paper_id}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-content-subtle font-mono">
+                  Paper ID: {featuredReview.paper_id}
+                </p>
               )}
             </header>
 
-            <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-[1fr_1fr_1fr_auto] md:gap-5">
+            <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-[1fr_1fr_1fr_auto] md:gap-4">
               {meta.map(({ label, value }) => (
                 <div key={label}>
-                  <dt className="text-white/60 whitespace-nowrap">{label}</dt>
-                  <dd className="font-semibold leading-snug">{value}</dd>
+                  <dt className="text-content-subtle text-xs uppercase tracking-wider whitespace-nowrap">{label}</dt>
+                  <dd className="font-semibold leading-snug text-content-primary mt-0.5">{value}</dd>
                 </div>
               ))}
             </dl>
 
-            <section className="space-y-4 text-sm leading-relaxed text-white/80">
+            <section className="space-y-3 text-sm leading-relaxed text-content-muted">
               <div className="flex items-baseline justify-between gap-3">
-                <h4 className="text-base uppercase tracking-[0.3em] text-white/70">Overview</h4>
+                <h4 className="text-xs uppercase tracking-[0.2em] text-content-subtle font-semibold">Overview</h4>
               </div>
-              <p className="text-base leading-relaxed" style={clamp3}>
+              <p className="text-sm leading-relaxed text-content-secondary" style={clamp3}>
                 {overviewText || "No summary available yet."}
               </p>
               <Link
                 to={`/review/${featuredReview.id}`}
-                className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-[#ff9cf5] underline-offset-4 transition hover:text-white hover:underline"
+                className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-accent-link underline-offset-4 transition hover:text-content-primary hover:underline"
               >
                 Read the full review
-                <span aria-hidden className="text-white/60">→</span>
+                <span aria-hidden className="text-content-dim">→</span>
               </Link>
             </section>
 
-            <div className="grid grid-cols-5 gap-4 justify-items-center">
+            <div className="grid grid-cols-5 gap-3 justify-items-center pt-2">
               {ratings.map(({ label, value }, index) => {
-                const arcColor = ratingColors[label] ?? "#ff6bd5";
+                const arcColor = ratingColors[label] ?? "var(--accent-primary)";
                 const angle = (value ?? 0) * 3.6;
                 const columnPositions = [2, 4, 1, 3, 5];
                 return (
                   <div
                     key={label}
-                    className="flex flex-col items-center gap-3 text-xs uppercase tracking-wide"
+                    className="flex flex-col items-center gap-2 text-[0.6rem] uppercase tracking-wide"
                     style={{ gridColumn: `${columnPositions[index]} / span 1` }}
                   >
-                    <span className="text-center text-white/70">{label.replace("Data ", "").toUpperCase()}</span>
+                    <span className="text-center text-content-subtle font-medium">{label.replace("Data ", "").toUpperCase()}</span>
                     <div
-                      className="relative h-24 w-24 rounded-full"
+                      className="relative h-[4.5rem] w-[4.5rem] rounded-full"
                       style={{
                         background:
-                          `radial-gradient(circle at center, #0c0d23 63%, transparent 64%), ` +
-                          `conic-gradient(${arcColor} ${angle}deg, rgba(255,255,255,0.12) 0)`
+                          `radial-gradient(circle at center, var(--bg-card) 60%, transparent 61%), ` +
+                          `conic-gradient(${arcColor} ${angle}deg, var(--border-default) 0)`
                       }}
                     >
-                      <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-[#050410] text-lg font-semibold text-white">
+                      <div className="absolute inset-[8px] flex flex-col items-center justify-center rounded-full bg-surface-base text-base font-semibold text-content-primary font-mono">
                         {value !== null ? value : "—"}
-                        {value !== null && <span className="text-[0.65rem] font-normal text-white/60">%</span>}
+                        {value !== null && <span className="text-[0.55rem] font-normal text-content-dim">%</span>}
                       </div>
                     </div>
                   </div>

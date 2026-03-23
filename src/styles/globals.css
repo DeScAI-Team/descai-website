@@ -1,23 +1,51 @@
-@import url("https://fonts.googleapis.com/css2?family=Audiowide&display=swap");
-/* Neon header font - pulls Audiowide for a blocky outline look */
+/* ==========================================================================
+   DeScAI Global Styles
+   
+   This file imports the theme system and provides base styles that respond
+   to the active theme variant via CSS custom properties.
+   ========================================================================== */
+
+/* Import theme variables first */
+@import "./themes.css";
+
+/* Import fonts - Audiowide for legacy neon headings, JetBrains Mono for financial data */
+@import url("https://fonts.googleapis.com/css2?family=Audiowide&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* --------------------------------------------------------------------------
+   BASE STYLES
+   -------------------------------------------------------------------------- */
 body {
-  font-family: "Space Grotesk", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
 }
 
+/* --------------------------------------------------------------------------
+   GRADIENT BACKGROUND
+   
+   In "current" theme: vivid purple/magenta/cyan gradients
+   In "refresh" theme: very subtle single-color radial glow
+   -------------------------------------------------------------------------- */
 .gradient-bg {
   position: absolute;
   inset: -10% 0;
+  opacity: var(--gradient-show, 1);
   background:
-    radial-gradient(circle at 15% 35%, rgba(88, 33, 255, 0.45), transparent 50%),
-    radial-gradient(circle at 70% 20%, rgba(252, 92, 170, 0.4), transparent 55%),
-    radial-gradient(circle at 80% 70%, rgba(44, 196, 255, 0.35), transparent 45%);
+    radial-gradient(circle at 15% 35%, var(--gradient-primary), transparent 50%),
+    radial-gradient(circle at 70% 20%, var(--gradient-secondary), transparent 55%),
+    radial-gradient(circle at 80% 70%, var(--gradient-tertiary), transparent 45%);
   filter: blur(60px);
   z-index: 0;
+}
+
+/* Refresh theme: replace with subtle center glow */
+.theme-refresh .gradient-bg {
+  background: radial-gradient(ellipse 80% 60% at 50% 30%, var(--gradient-primary), transparent 70%);
+  filter: blur(80px);
 }
 
 .noise-overlay {
@@ -29,6 +57,13 @@ body {
   pointer-events: none;
 }
 
+.theme-refresh .noise-overlay {
+  opacity: 0.15;
+}
+
+/* --------------------------------------------------------------------------
+   NEON BLUR ELEMENTS
+   -------------------------------------------------------------------------- */
 .neon-blur {
   position: absolute;
   width: 200px;
@@ -38,6 +73,17 @@ body {
   opacity: 0.7;
 }
 
+.theme-refresh .neon-blur {
+  opacity: 0.2;
+  filter: blur(120px);
+}
+
+/* --------------------------------------------------------------------------
+   PANEL STYLES
+   
+   Current theme: colored gradient borders with glow
+   Refresh theme: thin white borders, no colored glow
+   -------------------------------------------------------------------------- */
 .panel-gradient {
   position: relative;
 }
@@ -47,27 +93,74 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-default);
   box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
 
+/* Panel wrapper - gradient border in current, subtle in refresh */
+.panel-border {
+  border-radius: 20px;
+  padding: 4px;
+  background: linear-gradient(
+    135deg,
+    var(--panel-border-from),
+    var(--panel-border-via),
+    var(--panel-border-to)
+  );
+  box-shadow: var(--glow-panel);
+}
+
+.theme-refresh .panel-border {
+  padding: 1px;
+  background: var(--border-panel);
+  box-shadow: var(--glow-panel);
+}
+
+.panel-inner {
+  border-radius: 16px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-default);
+}
+
+/* --------------------------------------------------------------------------
+   SECTION HEADINGS
+   
+   Current theme: Audiowide font with neon glow effect
+   Refresh theme: Space Grotesk, uppercase, letter-spacing for hierarchy
+   -------------------------------------------------------------------------- */
 .neon-heading {
   display: inline-block;
   margin: 0 auto;
-  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 1.08rem;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
   line-height: 1.05;
   text-transform: uppercase;
   white-space: nowrap;
-  color: #fdf9ff;
+  color: var(--text-primary);
+}
+
+/* Current theme: neon glow effect */
+.theme-current .neon-heading {
+  font-family: "Audiowide", var(--font-heading);
+  font-size: 1.08rem;
+  letter-spacing: 0.2em;
   text-shadow:
     0 0 2px rgba(255, 255, 255, 0.5),
     0 0 4px rgba(255, 57, 249, 0.32),
     0 0 8px rgba(255, 57, 249, 0.24),
     0 0 12px rgba(255, 57, 249, 0.16);
+}
+
+/* Refresh theme: clean sans-serif */
+.theme-refresh .neon-heading {
+  font-family: "Space Grotesk", var(--font-body);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-shadow: none;
+  color: var(--text-muted);
 }
 
 .neon-heading-left {
@@ -76,12 +169,18 @@ body {
 
 .neon-heading-compact {
   display: inline-block;
-  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 1rem;
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #fdf9ff;
+  color: var(--text-primary);
+}
+
+.theme-current .neon-heading-compact {
+  font-family: "Audiowide", var(--font-heading);
+  font-size: 1rem;
+  letter-spacing: 0.22em;
   -webkit-text-stroke: 1px rgba(255, 57, 249, 0.35);
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.4),
@@ -89,33 +188,56 @@ body {
     0 0 6px rgba(255, 57, 249, 0.18);
 }
 
-.neon-heading::selection {
-  background: rgba(255, 61, 253, 0.2);
-  text-shadow:
-    0 0 2px rgba(255, 255, 255, 0.5),
-    0 0 5px rgba(255, 61, 253, 0.35),
-    0 0 9px rgba(255, 61, 253, 0.25);
+.theme-refresh .neon-heading-compact {
+  font-family: "Space Grotesk", var(--font-body);
+  -webkit-text-stroke: none;
+  text-shadow: none;
 }
 
+.neon-heading::selection {
+  background: rgba(255, 61, 253, 0.2);
+}
+
+/* Underline accent */
 .neon-underline {
   display: block;
   margin: 10px auto 0;
-  width: 78px;
+  width: 60px;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 92, 249, 0) 0%, rgba(255, 92, 249, 0.7) 50%, rgba(255, 92, 249, 0) 100%);
-  box-shadow:
-    0 0 4px rgba(255, 92, 249, 0.18),
-    0 0 8px rgba(255, 92, 249, 0.12);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent-primary),
+    transparent
+  );
+  opacity: 0.7;
 }
 
+.theme-refresh .neon-underline {
+  width: 40px;
+  height: 1px;
+  opacity: 0.4;
+}
+
+/* --------------------------------------------------------------------------
+   FEATURED PANEL HEADING
+   -------------------------------------------------------------------------- */
 .featured-heading {
-  color: #ffffff;
+  color: var(--text-primary);
+}
+
+.theme-current .featured-heading {
   -webkit-text-stroke: 0.5px #ff7df2;
   text-shadow:
     0 0 4px rgba(255, 255, 255, 0.35),
     0 0 12px rgba(255, 125, 242, 0.3),
     0 0 18px rgba(112, 198, 255, 0.18);
+}
+
+.theme-refresh .featured-heading {
+  -webkit-text-stroke: none;
+  text-shadow: none;
 }
 
 .featured-chip {
@@ -125,46 +247,222 @@ body {
   padding: 10px 18px;
   gap: 14px;
   background: transparent;
-  color: #fdf9ff;
-  -webkit-text-stroke: 1px rgba(255, 57, 249, 0.82);
-  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text-primary);
+  font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   text-transform: uppercase;
   border-radius: 14px;
-  box-shadow: none;
+  letter-spacing: 0.18em;
+}
+
+.theme-current .featured-chip {
+  font-family: "Audiowide", var(--font-heading);
+  font-size: 1.6rem;
   letter-spacing: 0.22em;
+  -webkit-text-stroke: 1px rgba(255, 57, 249, 0.82);
   text-shadow:
     0 0 2px rgba(255, 255, 255, 0.65),
     0 0 6px rgba(255, 57, 249, 0.45),
     0 0 12px rgba(255, 57, 249, 0.32);
 }
 
+.theme-refresh .featured-chip {
+  font-family: "Space Grotesk", var(--font-body);
+  -webkit-text-stroke: none;
+  text-shadow: none;
+  color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   SCROLLBAR STYLES
+   -------------------------------------------------------------------------- */
 .custom-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #ffffff rgba(255, 255, 255, 0.4);
+  scrollbar-color: var(--accent-primary) rgba(255, 255, 255, 0.1);
   scrollbar-gutter: stable;
 }
 
 .custom-scroll::-webkit-scrollbar {
-  width: 12px;
-  background: rgba(255, 255, 255, 0.3);
+  width: 8px;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .custom-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 999px;
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {
-  background: #ffffff !important;
+  background: var(--accent-primary);
   border-radius: 999px;
-  border: 3px solid rgba(255, 255, 255, 0.35);
-  box-shadow:
-    0 0 10px rgba(255, 255, 255, 0.55),
-    0 0 18px rgba(255, 255, 255, 0.4);
+  opacity: 0.6;
+}
+
+.theme-refresh .custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #ffffff !important;
+  background: var(--accent-highlight);
+}
+
+.theme-refresh .custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   TOKEN / FINANCIAL DATA TYPOGRAPHY
+   
+   Apply monospace font and tabular-nums for proper alignment of prices
+   -------------------------------------------------------------------------- */
+.token-value,
+.price-value,
+.numeric-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Token ticker styling */
+.token-ticker {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* --------------------------------------------------------------------------
+   CHAIN BADGE COLORS
+   
+   Current theme: uniform gray
+   Refresh theme: chain-specific colors
+   -------------------------------------------------------------------------- */
+.chain-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: var(--chain-default);
+  color: var(--chain-text);
+}
+
+.theme-refresh .chain-badge[data-chain="ethereum"],
+.theme-refresh .chain-badge[data-chain="eth"] {
+  background: var(--chain-eth);
+  color: var(--chain-eth-text, var(--chain-text));
+}
+
+.theme-refresh .chain-badge[data-chain="base"] {
+  background: var(--chain-base);
+  color: var(--chain-base-text, var(--chain-text));
+}
+
+.theme-refresh .chain-badge[data-chain="solana"],
+.theme-refresh .chain-badge[data-chain="sol"] {
+  background: var(--chain-sol);
+  color: var(--chain-sol-text, var(--chain-text));
+}
+
+.theme-refresh .chain-badge[data-chain="arbitrum"],
+.theme-refresh .chain-badge[data-chain="arb"] {
+  background: var(--chain-arb);
+  color: var(--chain-arb-text, var(--chain-text));
+}
+
+/* --------------------------------------------------------------------------
+   PRICE CHANGE BADGES
+   
+   Enhanced styling for +/- percentages with pill backgrounds
+   -------------------------------------------------------------------------- */
+.price-change {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-change.positive {
+  color: var(--status-positive);
+}
+
+.price-change.negative {
+  color: var(--status-negative);
+}
+
+.theme-refresh .price-change.positive {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.theme-refresh .price-change.negative {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* --------------------------------------------------------------------------
+   TABLE STYLES
+   
+   Alternating row shading and right-aligned numeric columns
+   -------------------------------------------------------------------------- */
+.data-table-row {
+  background: var(--table-row-bg);
+}
+
+.data-table-row:nth-child(even) {
+  background: var(--table-row-bg-alt);
+}
+
+.theme-refresh .data-table-row {
+  border-bottom: 1px solid var(--table-row-border);
+}
+
+.numeric-column {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   ERROR / WARNING BANNERS
+   
+   More subtle inline notices in refresh theme
+   -------------------------------------------------------------------------- */
+.error-banner {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.theme-current .error-banner {
+  background: rgba(251, 146, 60, 0.15);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  color: #fcd34d;
+}
+
+.theme-refresh .error-banner {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  color: rgba(252, 165, 165, 0.9);
+}
+
+/* --------------------------------------------------------------------------
+   UTILITY CLASSES
+   -------------------------------------------------------------------------- */
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-pretty {
+  text-wrap: pretty;
+}
+
+/* Tabular nums utility */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

@@ -8,25 +8,27 @@ const SnapshotsPanel = ({ className }: SnapshotsPanelProps) => {
   return (
     <article
       className={clsx(
-        "w-full rounded-[20px] border border-white/10 bg-gradient-to-br from-[#49112a] via-[#2d1240] to-[#182c56] p-6 text-center text-sm leading-relaxed text-white/80 shadow-[0_18px_38px_rgba(0,0,0,0.45)]",
+        "w-full rounded-[16px] border border-border-panel bg-surface-card p-5 text-center text-sm leading-relaxed text-content-secondary shadow-panel",
         className
       )}
     >
       <div className="text-center">
-        <p className="neon-heading text-[0.95rem]">Snapshots</p>
+        <p className="neon-heading text-[0.85rem]">Snapshots</p>
         <span className="neon-underline" />
       </div>
 
-      <p className="mt-4 text-white/75">
+      <p className="mt-4 text-content-muted text-sm">
         Access past snapshots and donate for access to our most recent releases.
       </p>
 
       <button
         type="button"
-        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-3 text-[0.85rem] font-semibold uppercase tracking-[0.22em] text-white transition hover:border-white/30 hover:bg-white/10"
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-border-panel bg-surface-subtle px-4 py-2.5 text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-content-primary transition hover:border-accent-primary hover:bg-surface-elevated"
       >
         View snapshots
-        <span aria-hidden className="text-white/60">↗</span>
+        <span aria-hidden className="text-content-dim">
+          ↗
+        </span>
       </button>
     </article>
   );

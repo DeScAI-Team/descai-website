@@ -1,0 +1,172 @@
+/* ==========================================================================
+   DeScAI Theme System
+   
+   Two theme variants:
+   - "current" (original purple/magenta gradient aesthetic)
+   - "refresh" (professional fintech with near-black background, teal accent)
+   
+   The refresh theme creates visual depth with subtle luminance differences
+   between sidebar, main panel, and rail. It reserves accent colors for
+   specific UI elements and uses a more sophisticated, financial-tool palette.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   BASE / CURRENT THEME (default - original purple gradient look)
+   -------------------------------------------------------------------------- */
+:root,
+.theme-current {
+  /* Background surfaces */
+  --bg-base: #040516;
+  --bg-sidebar: rgba(6, 0, 23, 0.95);
+  --bg-main: rgba(6, 0, 23, 0.95);
+  --bg-rail: rgba(6, 0, 23, 0.95);
+  --bg-card: #0c0d23;
+  --bg-card-hover: #11122a;
+  --bg-subtle: rgba(255, 255, 255, 0.05);
+  --bg-elevated: rgba(255, 255, 255, 0.08);
+
+  /* Gradient background */
+  --gradient-show: 1;
+  --gradient-primary: rgba(88, 33, 255, 0.45);
+  --gradient-secondary: rgba(252, 92, 170, 0.4);
+  --gradient-tertiary: rgba(44, 196, 255, 0.35);
+
+  /* Accent colors */
+  --accent-primary: #ff44ff;
+  --accent-primary-dim: rgba(255, 68, 255, 0.35);
+  --accent-secondary: #a14bff;
+  --accent-tertiary: #3f2bff;
+  --accent-highlight: #ff9cf5;
+  --accent-link: #78d4ff;
+
+  /* Border colors */
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-accent: rgba(255, 68, 255, 0.35);
+  --border-panel: rgba(255, 255, 255, 0.1);
+
+  /* Text colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  --text-muted: rgba(255, 255, 255, 0.7);
+  --text-subtle: rgba(255, 255, 255, 0.55);
+  --text-dim: rgba(255, 255, 255, 0.45);
+  --text-accent: #ff9cf5;
+  --text-link: #78d4ff;
+
+  /* Status colors */
+  --status-positive: #7affb2;
+  --status-negative: #ff7a93;
+  --status-warning: #fcd587;
+  --status-info: #78d4ff;
+
+  /* Panel glow */
+  --glow-panel: 0 0 35px rgba(255, 68, 255, 0.35);
+  --glow-featured: 0 0 45px rgba(255, 68, 255, 0.35);
+
+  /* Panel border gradient */
+  --panel-border-from: #ff44ff;
+  --panel-border-via: #a14bff;
+  --panel-border-to: #3f2bff;
+  --panel-border-visible: 1;
+
+  /* Typography */
+  --font-heading: "Press Start 2P", "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Token table row styles */
+  --table-row-bg: linear-gradient(to right, rgba(26, 6, 58, 0.9), rgba(9, 0, 31, 0.8));
+  --table-row-bg-alt: linear-gradient(to right, rgba(26, 6, 58, 0.85), rgba(9, 0, 31, 0.75));
+  --table-row-border: transparent;
+
+  /* Chain badge colors (uniform in current theme) */
+  --chain-eth: rgba(255, 255, 255, 0.1);
+  --chain-base: rgba(255, 255, 255, 0.1);
+  --chain-sol: rgba(255, 255, 255, 0.1);
+  --chain-arb: rgba(255, 255, 255, 0.1);
+  --chain-default: rgba(255, 255, 255, 0.1);
+  --chain-text: rgba(255, 255, 255, 0.75);
+}
+
+/* --------------------------------------------------------------------------
+   REFRESH THEME - Professional fintech aesthetic
+   -------------------------------------------------------------------------- */
+.theme-refresh {
+  /* Background surfaces - subtle luminance differences for depth */
+  --bg-base: #0d0d0f;
+  --bg-sidebar: #111114;
+  --bg-main: #141418;
+  --bg-rail: #111114;
+  --bg-card: #18181c;
+  --bg-card-hover: #1e1e24;
+  --bg-subtle: rgba(255, 255, 255, 0.03);
+  --bg-elevated: rgba(255, 255, 255, 0.05);
+
+  /* Gradient background - very subtle single-color radial glow */
+  --gradient-show: 0.4;
+  --gradient-primary: rgba(0, 229, 204, 0.08);
+  --gradient-secondary: rgba(56, 189, 248, 0.05);
+  --gradient-tertiary: transparent;
+
+  /* Accent colors - teal/cyan focused for fintech feel */
+  --accent-primary: #00e5cc;
+  --accent-primary-dim: rgba(0, 229, 204, 0.15);
+  --accent-secondary: #38bdf8;
+  --accent-tertiary: #0ea5e9;
+  --accent-highlight: #00e5cc;
+  --accent-link: #38bdf8;
+
+  /* Border colors - thin, low-opacity white borders */
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-accent: rgba(0, 229, 204, 0.25);
+  --border-panel: rgba(255, 255, 255, 0.12);
+
+  /* Text colors */
+  --text-primary: #f4f4f5;
+  --text-secondary: rgba(244, 244, 245, 0.9);
+  --text-muted: rgba(244, 244, 245, 0.7);
+  --text-subtle: rgba(244, 244, 245, 0.55);
+  --text-dim: rgba(244, 244, 245, 0.4);
+  --text-accent: #00e5cc;
+  --text-link: #38bdf8;
+
+  /* Status colors - more distinct for data visualization */
+  --status-positive: #22c55e;
+  --status-negative: #ef4444;
+  --status-warning: #f59e0b;
+  --status-info: #38bdf8;
+
+  /* Panel glow - subtle or none */
+  --glow-panel: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --glow-featured: 0 12px 40px rgba(0, 0, 0, 0.6);
+
+  /* Panel border gradient - subtle teal accent or thin white */
+  --panel-border-from: rgba(0, 229, 204, 0.3);
+  --panel-border-via: rgba(56, 189, 248, 0.2);
+  --panel-border-to: rgba(14, 165, 233, 0.15);
+  --panel-border-visible: 0;
+
+  /* Typography - modern sans-serif */
+  --font-heading: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Token table row styles - alternating subtle shading */
+  --table-row-bg: #18181c;
+  --table-row-bg-alt: #1c1c22;
+  --table-row-border: rgba(255, 255, 255, 0.04);
+
+  /* Chain badge colors - distinct per chain */
+  --chain-eth: rgba(136, 132, 216, 0.25);
+  --chain-eth-text: #a5a0e8;
+  --chain-base: rgba(0, 82, 255, 0.2);
+  --chain-base-text: #4b8bff;
+  --chain-sol: rgba(20, 241, 149, 0.15);
+  --chain-sol-text: #14f195;
+  --chain-arb: rgba(40, 160, 240, 0.2);
+  --chain-arb-text: #28a0f0;
+  --chain-default: rgba(255, 255, 255, 0.08);
+  --chain-text: rgba(255, 255, 255, 0.8);
+}

@@ -26,12 +26,12 @@ const PlatformPanel = ({ className }: PlatformPanelProps) => {
   return (
     <section
       className={clsx(
-        "w-full rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]",
+        "panel-border w-full",
         className
       )}
     >
-      <div className="flex h-full flex-col gap-4 rounded-[16px] border border-white/10 bg-[#060017]/95 p-6 shadow-[inset_0_0_35px_rgba(255,255,255,0.06)]">
-        <div className="text-center mt-3">
+      <div className="panel-inner flex h-full flex-col gap-4 p-5">
+        <div className="text-center mt-2">
           <h3 className="neon-heading">By Platform</h3>
           <span className="neon-underline" />
         </div>
@@ -41,25 +41,25 @@ const PlatformPanel = ({ className }: PlatformPanelProps) => {
           className="custom-scroll overflow-y-auto"
           style={lockedHeight ? { height: lockedHeight } : undefined}
         >
-          <div className="flex flex-col gap-3 text-sm">
+          <div className="flex flex-col gap-2.5 text-sm">
             {platformGroups.map((group) => {
               return (
                 <div
                   key={group.title}
                   className={clsx(
-                    "rounded-[12px] border border-white/10 bg-white/5 transition",
-                    openGroups[group.title] && "border-white/25 bg-white/10"
+                    "rounded-[10px] border border-border bg-surface-subtle transition",
+                    openGroups[group.title] && "border-border-panel bg-surface-elevated"
                   )}
                 >
                   <button
-                    className="flex w-full items-center justify-between gap-3 rounded-[12px] bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
+                    className="flex w-full items-center justify-between gap-3 rounded-[10px] bg-surface-subtle px-3.5 py-2.5 text-left transition hover:bg-surface-elevated"
                     onClick={() => toggleGroup(group.title)}
                   >
-                    <p className="text-base font-semibold uppercase tracking-wide text-[#ff9cf5]">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-accent-highlight">
                       {group.title}
                     </p>
                     <span
-                      className="text-white/70 transition-transform"
+                      className="text-content-muted transition-transform text-xs"
                       aria-label={openGroups[group.title] ? "Collapse platforms" : "Expand platforms"}
                       style={{ transform: openGroups[group.title] ? "rotate(180deg)" : "rotate(0deg)" }}
                     >
@@ -67,10 +67,10 @@ const PlatformPanel = ({ className }: PlatformPanelProps) => {
                     </span>
                   </button>
                   {openGroups[group.title] && (
-                    <ul className="space-y-1 px-4 pb-4 pt-2 text-white/80">
+                    <ul className="space-y-1 px-3.5 pb-3.5 pt-1.5 text-content-secondary">
                       {group.items.map((item) => (
-                        <li key={item} className="flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#ff9cf5]/70" aria-hidden />
+                        <li key={item} className="flex items-center gap-2 text-sm">
+                          <span className="h-1 w-1 rounded-full bg-accent-primary opacity-60" aria-hidden />
                           <span className="flex-1">{item.replace(/^>\s*/, "")}</span>
                         </li>
                       ))}
