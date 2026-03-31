@@ -65,7 +65,7 @@ const SortButton = ({
 
 const TokenTable = ({ tokens, sort, onSortChange, compact = false, showPlatform = true, emptyMessage }: TokenTableProps) => {
   if (!tokens.length) {
-    return <p className="rounded-[12px] border border-white/10 bg-white/5 p-4 text-sm text-white/70">{emptyMessage ?? "No tokens available."}</p>;
+    return <p className="rounded-[12px] border border-white/15 bg-white/10 p-4 text-sm text-white/75">{emptyMessage ?? "No tokens available."}</p>;
   }
 
   return (
@@ -93,13 +93,13 @@ const TokenTable = ({ tokens, sort, onSortChange, compact = false, showPlatform 
             <article
               key={token.id}
               className={clsx(
-                "grid items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#1a063a]/90 to-[#09001f]/80 px-4 py-3 text-left shadow-[inset_0_0_10px_rgba(255,255,255,0.04)]",
+                "grid items-center gap-2 rounded-[12px] bg-gradient-to-r from-[#232b56]/92 to-[#171d3e]/88 px-4 py-3 text-left shadow-[inset_0_0_12px_rgba(255,255,255,0.06)]",
                 compact ? "grid-cols-[1.45fr_0.85fr_0.9fr_0.8fr_0.95fr]" : "grid-cols-[1.3fr_0.9fr_0.8fr_0.9fr_0.9fr_0.9fr]",
                 showPlatform && !compact && "grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr_0.9fr_0.9fr_0.9fr]"
               )}
             >
               <div className="min-w-0">
-                <p className="truncate font-semibold text-[#ffb9ff]">{token.symbol}</p>
+                <p className="truncate font-semibold text-[#9fc3ff]">{token.symbol}</p>
                 <p className="truncate text-xs text-white/60">{token.name}</p>
               </div>
 

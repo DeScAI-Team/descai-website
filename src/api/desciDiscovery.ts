@@ -19,10 +19,8 @@ type GraphQLResponse<T> = {
 type MoleculeIptRecord = {
   id?: string;
   l2TokenAddress?: string | null;
-  metadata?: {
-    name?: string | null;
-    symbol?: string | null;
-  } | null;
+  name?: string | null;
+  symbol?: string | null;
   markets?: Array<{
     chainId?: number | null;
     usdPrice?: number | null;
@@ -84,10 +82,8 @@ const fetchMoleculeRecords = async (): Promise<JsonRecord[]> => {
       ipts(limit: 500) {
         id
         l2TokenAddress
-        metadata {
-          name
-          symbol
-        }
+        name
+        symbol
         markets {
           chainId
           usdPrice
@@ -133,8 +129,8 @@ const fetchMoleculeRecords = async (): Promise<JsonRecord[]> => {
 
         return {
           address: ipt.l2TokenAddress ?? ipt.id ?? undefined,
-          symbol: ipt.metadata?.symbol ?? undefined,
-          name: ipt.metadata?.name ?? undefined,
+          symbol: ipt.symbol ?? undefined,
+          name: ipt.name ?? undefined,
           chainId,
           chain,
           marketSeed: selectedMarket

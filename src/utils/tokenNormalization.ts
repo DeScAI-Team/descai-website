@@ -67,7 +67,8 @@ export const parseChain = (value: unknown): TokenChain => {
 const normalizeAddress = (value: string): string => {
   const trimmed = value.trim();
   if (!trimmed) return "";
-  const prefixed = trimmed.includes(":") ? trimmed.split(":").at(-1) ?? trimmed : trimmed;
+  const parts = trimmed.split(":");
+  const prefixed = trimmed.includes(":") ? parts[parts.length - 1] ?? trimmed : trimmed;
   if (prefixed.startsWith("0x")) return prefixed.toLowerCase();
   return prefixed;
 };

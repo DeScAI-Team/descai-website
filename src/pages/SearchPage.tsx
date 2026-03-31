@@ -67,7 +67,7 @@ const SearchPage = () => {
           </div>
             <form onSubmit={onSubmit} className="flex flex-wrap items-center justify-center gap-3">
               <input
-                className="w-full max-w-xl rounded-[14px] border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#ff9cf5]"
+                className="w-full max-w-xl rounded-[14px] border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#9fc3ff]"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search reviews by title or paper ID..."
@@ -82,8 +82,8 @@ const SearchPage = () => {
             <p className="text-xs text-white/60">Showing results for “{trimmed || "…" }”</p>
           </header>
 
-          <section className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
-            <div className="rounded-[16px] border border-white/10 bg-[#060017]/90 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+          <section className="rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_26px_rgba(60,83,127,0.22)]">
+            <div className="rounded-[16px] border border-white/15 bg-[#141c3d]/92 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur">
             {loading && <p className="text-white/70">Searching…</p>}
             {error && <p className="text-amber-200">{error}</p>}
             {!loading && !error && results.length === 0 && (

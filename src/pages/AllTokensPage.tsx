@@ -90,8 +90,8 @@ const AllTokensPage = () => {
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-8">
         <Navbar />
 
-        <section className="w-full space-y-4 rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
-          <div className="rounded-[16px] border border-white/10 bg-[#060017]/95 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+        <section className="w-full space-y-4 rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_26px_rgba(60,83,127,0.22)]">
+          <div className="rounded-[16px] border border-white/15 bg-[#141c3d]/95 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur">
             <header className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Link
@@ -121,7 +121,7 @@ const AllTokensPage = () => {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search by ticker, project, chain, platform, or address..."
-                  className="w-full rounded-[12px] border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#ff9cf5]"
+                  className="w-full rounded-[12px] border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#9fc3ff]"
                 />
               </label>
               <div className="text-xs text-white/60">

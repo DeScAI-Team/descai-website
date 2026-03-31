@@ -54,7 +54,7 @@ const SectionBlock = ({ title, icon, content }: { title: string; icon: string; c
   };
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#0d0f26] px-6 py-5 shadow-inner shadow-white/5">
+    <section className="rounded-2xl border border-white/15 bg-[#1a2247] px-6 py-5 shadow-inner shadow-white/10">
       <header className="flex items-center gap-3">
         <span className="text-lg">{icon}</span>
         <h3 className="text-lg font-semibold text-white">{title}</h3>
@@ -82,11 +82,11 @@ const ScoreChip = ({ label, score, color }: { label: string; score: number | nul
         className="relative h-24 w-24 rounded-full"
         style={{
           background:
-            `radial-gradient(circle at center, #0c0d23 63%, transparent 64%), ` +
+            `radial-gradient(circle at center, #1a2247 63%, transparent 64%), ` +
             `conic-gradient(${color} ${angle}deg, rgba(255,255,255,0.12) 0)`
         }}
       >
-        <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-[#050410] text-lg font-semibold text-white">
+        <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-lg font-semibold text-white">
           {display}
           {score !== null && <span className="text-[0.65rem] font-normal text-white/60">%</span>}
         </div>
@@ -151,11 +151,11 @@ const ReviewPage = () => {
 
   const renderBody = () => {
     const wrap = (content: React.ReactNode) => (
-      <section className="rounded-[36px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[5px] shadow-[0_0_45px_rgba(255,68,255,0.35)]">
-        <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#06051eea] px-8 py-10 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
+      <section className="rounded-[36px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[5px] shadow-[0_0_30px_rgba(60,83,127,0.24)]">
+        <div className="relative overflow-hidden rounded-[32px] border border-white/15 bg-[#151d3de8] px-8 py-10 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
           <div className="absolute inset-0 -z-10 opacity-50">
-            <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#ff6bd5]" />
-            <div className="neon-blur left-1/4 top-1/2 bg-[#7b9dff]" />
+            <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#2b5176]" />
+            <div className="neon-blur left-1/4 top-1/2 bg-[#59b8ff]" />
           </div>
           {content}
         </div>
@@ -238,7 +238,7 @@ const ReviewPage = () => {
         </p>
 
         {narrative && (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-[#0c0d23] px-6 py-5 text-base leading-relaxed text-white/85 shadow-inner shadow-white/5">
+          <div className="mt-6 rounded-2xl border border-white/15 bg-[#1a2247] px-6 py-5 text-base leading-relaxed text-white/85 shadow-inner shadow-white/10">
             {narrative}
           </div>
         )}

@@ -34,13 +34,15 @@ const averageScore = (review?: Review | null) => {
 };
 
 const getNarrative = (review?: Review | null) =>
-  review?.originality_review?.review_statement ||
-  review?.originality_review?.rationale ||
-  review?.clarity_review?.review_statement ||
-  review?.clarity_review?.rationale ||
-  review?.rigor_reproducibility_review?.review_statement ||
-  review?.data_transparency_review?.review_statement ||
-  review?.interpretation_ethics_review?.review_statement;
+  [
+    review?.originality_review?.review_statement,
+    review?.originality_review?.rationale,
+    review?.clarity_review?.review_statement,
+    review?.clarity_review?.rationale,
+    review?.rigor_reproducibility_review?.review_statement,
+    review?.data_transparency_review?.review_statement,
+    review?.interpretation_ethics_review?.review_statement
+  ].find((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
 
 const countSections = (review?: Review | null) => {
   if (!review) return null;
@@ -91,7 +93,7 @@ const FeaturedPanel = () => {
         const fetched = await Promise.all(
           idsToFetch.map(async (itemId) => {
             try {
-              return await fetchReviewById(itemId);
+              return await fetchReviewById(String(itemId));
             } catch (err) {
               console.error("Failed to load review", err);
               return null;
@@ -138,7 +140,7 @@ const FeaturedPanel = () => {
   ];
 
   const SkeletonCard = () => (
-    <article className="space-y-6 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 shadow-inner shadow-white/5 animate-pulse">
+    <article className="space-y-6 rounded-[16px] border border-white/10 bg-[#1a2247] p-5 shadow-inner shadow-white/10 animate-pulse">
       <div className="h-8 w-3/4 rounded-lg bg-white/10" />
       <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
         {[...Array(4)].map((_, idx) => (
@@ -152,19 +154,19 @@ const FeaturedPanel = () => {
       <div className="h-16 rounded-2xl bg-white/10" />
       <div className="grid grid-cols-5 gap-4 justify-items-center">
         {[...Array(5)].map((_, idx) => (
-          <div key={idx} className="h-24 w-24 rounded-full bg-white/10" />
+          <div key={idx} className="h-28 w-28 rounded-full bg-white/10" />
         ))}
       </div>
     </article>
   );
 
   return (
-    <section className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_45px_rgba(255,68,255,0.35)]">
-      <div className="relative overflow-hidden rounded-[16px] border border-white/10 bg-[#060017]/95 px-4 pt-0 pb-4 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
-        <div className="absolute inset-0 -z-10 opacity-50">
-          <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#ff6bd5]" />
-          <div className="neon-blur left-1/4 top-1/2 bg-[#7b9dff]" />
-        </div>
+      <section className="rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_30px_rgba(60,83,127,0.24)]">
+        <div className="relative overflow-hidden rounded-[16px] border border-white/15 bg-[#141c3d]/95 px-4 pt-0 pb-4 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
+          <div className="absolute inset-0 -z-10 opacity-50">
+            <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#2b5176]" />
+            <div className="neon-blur left-1/4 top-1/2 bg-[#59b8ff]" />
+          </div>
 
         <div className="mb-1 -mt-4 flex flex-wrap items-center gap-4">
           <h2 className="flex-1 max-w-none whitespace-nowrap text-center font-display text-[3.4rem] md:text-[3.8rem] uppercase tracking-[0.28em] text-white">
@@ -186,14 +188,14 @@ const FeaturedPanel = () => {
         {loading && <SkeletonCard />}
 
         {!loading && !featuredReview && (
-          <article className="space-y-4 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 text-white/80 shadow-inner shadow-white/5">
+          <article className="space-y-4 rounded-[16px] border border-white/10 bg-[#1a2247] p-5 text-white/80 shadow-inner shadow-white/10">
             <h3 className="text-2xl font-semibold">No featured review yet</h3>
             <p className="text-white/70">Add a review in Supabase to populate this section.</p>
           </article>
         )}
 
         {!loading && featuredReview && (
-          <article className="space-y-6 rounded-[16px] border border-white/5 bg-[#0c0d23] p-5 shadow-inner shadow-white/5">
+          <article className="space-y-6 rounded-[16px] border border-white/10 bg-[#1a2247] p-5 shadow-inner shadow-white/10">
             <header className="space-y-3">
               <h3
                 className="font-display text-2xl md:text-[1.65rem] font-semibold leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]"
@@ -224,16 +226,16 @@ const FeaturedPanel = () => {
               </p>
               <Link
                 to={`/review/${featuredReview.id}`}
-                className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-[#ff9cf5] underline-offset-4 transition hover:text-white hover:underline"
+                className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-[#9fc3ff] underline-offset-4 transition hover:text-white hover:underline"
               >
                 Read the full review
                 <span aria-hidden className="text-white/60">→</span>
               </Link>
             </section>
 
-            <div className="grid grid-cols-5 gap-4 justify-items-center">
+            <div className="grid grid-cols-5 gap-5 justify-items-center">
               {ratings.map(({ label, value }, index) => {
-                const arcColor = ratingColors[label] ?? "#ff6bd5";
+                const arcColor = ratingColors[label] ?? "#59b8ff";
                 const angle = (value ?? 0) * 3.6;
                 const columnPositions = [2, 4, 1, 3, 5];
                 return (
@@ -244,14 +246,14 @@ const FeaturedPanel = () => {
                   >
                     <span className="text-center text-white/70">{label.replace("Data ", "").toUpperCase()}</span>
                     <div
-                      className="relative h-24 w-24 rounded-full"
+                      className="relative h-28 w-28 rounded-full"
                       style={{
                         background:
-                          `radial-gradient(circle at center, #0c0d23 63%, transparent 64%), ` +
+                          `radial-gradient(circle at center, #1a2247 63%, transparent 64%), ` +
                           `conic-gradient(${arcColor} ${angle}deg, rgba(255,255,255,0.12) 0)`
                       }}
                     >
-                      <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-[#050410] text-lg font-semibold text-white">
+                      <div className="absolute inset-[14px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-[1.15rem] font-semibold text-white">
                         {value !== null ? value : "—"}
                         {value !== null && <span className="text-[0.65rem] font-normal text-white/60">%</span>}
                       </div>

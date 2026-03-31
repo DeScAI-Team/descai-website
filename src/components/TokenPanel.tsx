@@ -40,8 +40,8 @@ const TokenPanel = () => {
     : "—";
 
   return (
-    <article className="rounded-[20px] bg-gradient-to-br from-[#ff44ff] via-[#a14bff] to-[#3f2bff] p-[4px] shadow-[0_0_35px_rgba(255,68,255,0.35)]">
-      <div className="rounded-[16px] bg-[#050018]/95 px-6 py-7">
+    <article className="rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_26px_rgba(60,83,127,0.22)]">
+      <div className="rounded-[16px] border border-white/15 bg-[#141c3d]/95 px-6 py-7">
         <header className="flex flex-wrap items-center justify-between gap-3 text-white">
           <h4 className="neon-heading neon-heading-left text-left text-lg">Project Tokens</h4>
           <div className="flex items-center gap-2 text-sm text-white/70">

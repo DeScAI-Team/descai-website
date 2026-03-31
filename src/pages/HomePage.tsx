@@ -8,29 +8,35 @@ import Footer from "@/components/Footer";
 
 const HomePage = () => {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-midnight px-4 py-10 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-midnight text-white">
       <div className="gradient-bg pointer-events-none" aria-hidden="true" />
       <div className="noise-overlay" aria-hidden="true" />
 
-      <div className="relative z-10 flex flex-col items-center gap-10">
-        <Navbar />
+      <div className="relative z-10 px-4 pb-10 pt-4 lg:px-6 lg:pb-12 lg:pt-0">
+        <div className="sticky top-0 z-50 -mx-4 bg-midnight/92 px-4 py-4 backdrop-blur lg:-mx-6 lg:px-6">
+          <div className="mx-auto flex w-full justify-center">
+            <Navbar />
+          </div>
+        </div>
 
-        <main className="grid w-full max-w-6xl gap-6 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
-          <div className="flex h-full w-full flex-col items-stretch gap-6 lg:min-h-0">
-            <div className="flex w-full">
-              <PlatformPanel className="h-full w-full" />
-            </div>
+        <main className="mt-6 grid w-full gap-6 lg:grid-cols-[280px_minmax(0,1fr)_280px] lg:items-start">
+          <aside className="flex flex-col gap-6 lg:sticky lg:top-28 lg:self-start">
+            <PlatformPanel className="w-full" />
             <SnapshotsPanel />
+          </aside>
+
+          <div className="min-w-0">
+            <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6">
+              <FeaturedPanel />
+              <TokenPanel />
+              <Footer />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <FeaturedPanel />
-            <TokenPanel />
-          </div>
-          <InsightsPanel />
+          <aside className="lg:sticky lg:top-28 lg:self-start">
+            <InsightsPanel />
+          </aside>
         </main>
-
-        <Footer />
       </div>
     </div>
   );

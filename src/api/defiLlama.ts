@@ -114,7 +114,9 @@ export async function fetchTokenSnapshots(tokens: DiscoveredToken[]): Promise<Re
     try {
       const [currentPayload, historicalPayload] = await Promise.all([
         fetchBatch(batch),
-        fetchHistoricalBatch(batch, historicalTimestampSec).catch(() => ({}))
+        fetchHistoricalBatch(batch, historicalTimestampSec).catch(
+          (): Record<string, DefiLlamaCoinPayload> => ({})
+        )
       ]);
       for (const [coinKey, coinPayload] of Object.entries(currentPayload)) {
         const token = byCoinKey.get(coinKey);

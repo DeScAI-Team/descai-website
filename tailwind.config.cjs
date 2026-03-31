@@ -8,12 +8,12 @@ module.exports = {
         display: ["Press Start 2P", "Space Grotesk", "ui-serif"]
       },
       colors: {
-        midnight: "#040516",
-        "plasma-pink": "#ff58e4",
-        "plasma-cyan": "#78d4ff"
+        midnight: "#12182b",
+        "plasma-pink": "#8fb4ff",
+        "plasma-cyan": "#6ed7ff"
       },
       dropShadow: {
-        neon: ["0 0 5px rgba(255,255,255,0.65)", "0 0 15px rgba(255,88,228,0.85)"]
+        neon: ["0 0 4px rgba(255,255,255,0.3)", "0 0 12px rgba(110,215,255,0.24)"]
       }
     }
   },
