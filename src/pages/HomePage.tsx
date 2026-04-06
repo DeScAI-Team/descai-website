@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { fetchReviewIndex } from "@/api/arweaveLoader";
 import FeaturedPanel from "@/components/FeaturedPanel";
 import InsightsPanel from "@/components/InsightsPanel";
 import Navbar from "@/components/Navbar";
@@ -7,6 +9,41 @@ import TokenPanel from "@/components/TokenPanel";
 import Footer from "@/components/Footer";
 
 const HomePage = () => {
+  const [featuredTxids, setFeaturedTxids] = useState<string[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredError, setFeaturedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFeaturedTxids = async () => {
+      setFeaturedLoading(true);
+      setFeaturedError(null);
+
+      try {
+        const { featuredTxids: rankedTxids } = await fetchReviewIndex();
+        if (!cancelled) {
+          setFeaturedTxids(rankedTxids);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setFeaturedTxids([]);
+          setFeaturedError((error as Error).message || "Failed to load featured research index");
+        }
+      } finally {
+        if (!cancelled) {
+          setFeaturedLoading(false);
+        }
+      }
+    };
+
+    void loadFeaturedTxids();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-midnight text-white">
       <div className="gradient-bg pointer-events-none" aria-hidden="true" />
@@ -27,7 +64,11 @@ const HomePage = () => {
 
           <div className="min-w-0">
             <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6">
-              <FeaturedPanel />
+              <FeaturedPanel
+                featuredTxids={featuredTxids}
+                sourceLoading={featuredLoading}
+                sourceError={featuredError}
+              />
               <TokenPanel />
               <Footer />
             </div>

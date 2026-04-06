@@ -1,58 +1,48 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchReviewById, fetchReviews } from "@/api/reviews";
+import { fetchReviewFromArweave } from "@/api/reviews";
 import type { Review } from "@/types/review";
 
 type RatingRow = { label: string; value: number | null };
-
-const ratingColors: Record<string, string> = {
-  Originality: "#ff4444",
-  "Data Transparency": "#b546ff",
-  Accuracy: "#ff6b2d",
-  Clarity: "#3b8cff",
-  Rigor: "#52ff92"
+type FeaturedPanelProps = {
+  featuredTxids: string[];
+  sourceLoading?: boolean;
+  sourceError?: string | null;
 };
 
-const toPercent = (value?: number | null) =>
-  typeof value === "number" && !Number.isNaN(value) ? Math.round(value * 100) : null;
+const ratingColors = ["#ff4444", "#b546ff", "#ff6b2d", "#3b8cff", "#52ff92"];
+
+const normalizeScore = (value?: number | null) =>
+  typeof value === "number" && !Number.isNaN(value) ? Math.round(value <= 1 ? value * 100 : value) : null;
 
 const averageScore = (review?: Review | null) => {
   if (!review) return null;
-  const scores = [
-    review.originality_score,
-    review.clarity_score,
-    review.rigor_score,
-    review.reproducibility_score,
-    review.data_transparency_score,
-    review.interpretation_congruence_score,
-    review.field_familiarity_score
-  ].filter((score): score is number => typeof score === "number");
+  if (typeof review.average_score === "number") {
+    return normalizeScore(review.average_score);
+  }
+
+  const scores = (review.categories ?? [])
+    .map((category) => normalizeScore(category.score))
+    .filter((score): score is number => typeof score === "number");
 
   if (!scores.length) return null;
-  const avg = scores.reduce((sum, value) => sum + value, 0) / scores.length;
-  return Math.round(avg * 100);
+  return Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length);
 };
 
 const getNarrative = (review?: Review | null) =>
   [
-    review?.originality_review?.review_statement,
-    review?.originality_review?.rationale,
-    review?.clarity_review?.review_statement,
-    review?.clarity_review?.rationale,
-    review?.rigor_reproducibility_review?.review_statement,
-    review?.data_transparency_review?.review_statement,
-    review?.interpretation_ethics_review?.review_statement
+    ...(review?.categories ?? []).flatMap((category) => [
+      category.section?.review_statement,
+      category.section?.rationale,
+      category.section?.summary,
+      category.section?.text
+    ]),
+    ...(review?.info ?? []).flatMap((section) => [section.content?.summary, section.content?.text])
   ].find((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
 
 const countSections = (review?: Review | null) => {
   if (!review) return null;
-  return [
-    review.originality_review,
-    review.clarity_review,
-    review.rigor_reproducibility_review,
-    review.data_transparency_review,
-    review.interpretation_ethics_review
-  ].filter(Boolean).length;
+  return (review.categories?.length ?? 0) + (review.info?.length ?? 0);
 };
 
 const formatDate = (dateString?: string | null) => {
@@ -63,10 +53,10 @@ const formatDate = (dateString?: string | null) => {
     : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
-const FeaturedPanel = () => {
+const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = null }: FeaturedPanelProps) => {
   const [detailedReviews, setDetailedReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const clamp3: React.CSSProperties = {
     display: "-webkit-box",
     WebkitLineClamp: 3,
@@ -75,58 +65,64 @@ const FeaturedPanel = () => {
   };
 
   useEffect(() => {
+    if (!featuredTxids.length) {
+      setDetailedReviews([]);
+      setDetailLoading(false);
+      setDetailError(null);
+      return;
+    }
+
     let cancelled = false;
 
     const load = async () => {
-      setLoading(true);
-      setError(null);
+      setDetailLoading(true);
+      setDetailError(null);
       try {
-        const list = await fetchReviews();
-        if (cancelled) return;
-
-        const idsToFetch = list.slice(0, 5).map((item) => item.id);
-        if (!idsToFetch.length) {
-          setDetailedReviews([]);
-          return;
-        }
-
-        const fetched = await Promise.all(
-          idsToFetch.map(async (itemId) => {
-            try {
-              return await fetchReviewById(String(itemId));
-            } catch (err) {
-              console.error("Failed to load review", err);
-              return null;
-            }
+        const fetched = await Promise.allSettled(
+          featuredTxids.map(async (txid) => {
+            const review = await fetchReviewFromArweave(txid);
+            return review;
           })
         );
 
         if (!cancelled) {
-          setDetailedReviews(fetched.filter(Boolean) as Review[]);
+          const reviews = fetched
+            .filter((result): result is PromiseFulfilledResult<Review> => result.status === "fulfilled")
+            .map((result) => result.value);
+
+          if (!reviews.length) {
+            throw new Error("Featured research could not be loaded from Arweave");
+          }
+
+          setDetailedReviews(reviews);
         }
       } catch (err) {
-        if (!cancelled) setError((err as Error).message || "Failed to load reviews");
+        if (!cancelled) setDetailError((err as Error).message || "Failed to load featured research");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setDetailLoading(false);
       }
     };
 
-    load();
+    void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [featuredTxids]);
 
   const featuredReview = detailedReviews[0] ?? null;
+  const loading = sourceLoading || detailLoading;
+  const error = sourceError ?? detailError;
 
   const ratings: RatingRow[] = useMemo(() => {
-    return [
-      { label: "Originality", value: toPercent(featuredReview?.originality_score) },
-      { label: "Data Transparency", value: toPercent(featuredReview?.data_transparency_score) },
-      { label: "Accuracy", value: toPercent(featuredReview?.interpretation_congruence_score) },
-      { label: "Clarity", value: toPercent(featuredReview?.clarity_score) },
-      { label: "Rigor", value: toPercent(featuredReview?.rigor_score ?? featuredReview?.reproducibility_score) }
-    ];
+    const topCategories = (featuredReview?.categories ?? [])
+      .slice(0, 5)
+      .map((category) => ({ label: category.label, value: normalizeScore(category.score) }));
+
+    while (topCategories.length < 5) {
+      topCategories.push({ label: `Metric ${topCategories.length + 1}`, value: null });
+    }
+
+    return topCategories;
   }, [featuredReview]);
 
   const overviewText = getNarrative(featuredReview);
@@ -190,7 +186,7 @@ const FeaturedPanel = () => {
         {!loading && !featuredReview && (
           <article className="space-y-4 rounded-[16px] border border-white/10 bg-[#1a2247] p-5 text-white/80 shadow-inner shadow-white/10">
             <h3 className="text-2xl font-semibold">No featured review yet</h3>
-            <p className="text-white/70">Add a review in Supabase to populate this section.</p>
+            <p className="text-white/70">No ranked Arweave research was available from the current index.</p>
           </article>
         )}
 
@@ -235,7 +231,7 @@ const FeaturedPanel = () => {
 
             <div className="grid grid-cols-5 gap-5 justify-items-center">
               {ratings.map(({ label, value }, index) => {
-                const arcColor = ratingColors[label] ?? "#59b8ff";
+                const arcColor = ratingColors[index % ratingColors.length] ?? "#59b8ff";
                 const angle = (value ?? 0) * 3.6;
                 const columnPositions = [2, 4, 1, 3, 5];
                 return (
@@ -244,7 +240,7 @@ const FeaturedPanel = () => {
                     className="flex flex-col items-center gap-3 text-xs uppercase tracking-wide"
                     style={{ gridColumn: `${columnPositions[index]} / span 1` }}
                   >
-                    <span className="text-center text-white/70">{label.replace("Data ", "").toUpperCase()}</span>
+                    <span className="text-center text-white/70">{label.toUpperCase()}</span>
                     <div
                       className="relative h-28 w-28 rounded-full"
                       style={{

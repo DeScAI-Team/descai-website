@@ -21,10 +21,13 @@ export type ReviewInfoSection = {
 
 /**Identifer information for a Review */
 export type ReviewListItem = {
-  id: string | number;
+  id: string;
+  txid?: string;
   created_at: string;
   title: string | null;
   paper_id: string | null;
+  average_score?: number | null;
+  featured?: boolean;
 };
 
 /**Dynamically Sized Review that contains specific catogeries, an average score, and general info about an entry. */

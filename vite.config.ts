@@ -15,6 +15,14 @@ export default defineConfig({
       "@": "/src"
     }
   },
+  server: {
+    proxy: {
+      "/api/index": {
+        target: "http://localhost:3001",
+        changeOrigin: true
+      }
+    }
+  },
   test: {
     projects: [{
       extends: true,

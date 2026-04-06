@@ -20,8 +20,8 @@ npm install
 
 ### Environment Variables
 Create `.env` from `.env.example` and set:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_ARWEAVE_INDEX_API_URL` (defaults to `/api/index`)
+- `VITE_ARWEAVE_GATEWAY_URL` (defaults to `https://arweave.net`)
 - `VITE_MOLECULE_API_KEY` (required for Molecule token discovery)
 - Optional overrides: `VITE_MOLECULE_GRAPHQL_ENDPOINT`, `VITE_DEFILLAMA_BASE_URL`
 
@@ -30,6 +30,12 @@ Create `.env` from `.env.example` and set:
 npm run dev
 ```
 Then open the printed local URL (defaults to `http://localhost:5173`).
+
+To power Arweave review data locally, start the index API in a second terminal:
+```bash
+npm run index-api
+```
+The Vite dev server proxies `/api/index` to `http://localhost:3001/api/index`.
 
 ### Build & Preview
 ```bash
@@ -45,7 +51,7 @@ npm run lint
 ## Project Structure
 ```
 src/
-  api/           # Supabase reviews + DeSci discovery + DefiLlama polling
+  api/           # Arweave review loading + DeSci discovery + DefiLlama polling
   components/    # Navbar, Featured, Insights, Platform panels
   hooks/         # Shared data hooks (useDesciTokens)
   services/      # Local cache + refresh rotation for token data
@@ -62,6 +68,13 @@ src/
 - Market metrics are fetched from DefiLlama in batched requests.
 - “All DeSci Tokens” page rotates refresh chunks each minute to reduce call pressure.
 - Home token section and all-tokens page are sortable (default by FDV).
+
+## Arweave Review Data Flow
+- The frontend loads ranked review candidates from `/api/index`.
+- Each returned TXID is fetched over standard HTTP from `https://arweave.net/{txid}` or `VITE_ARWEAVE_GATEWAY_URL`.
+- Summary metadata uses `name`, `date`, and `average_score`, with fallbacks for legacy `dao_name` and `review_date`.
+- Reviews are ranked by `average_score` descending, and the top five TXIDs are flagged for Featured Research.
+- If the index request fails, homepage/search surfaces the fetch error. If individual Arweave documents fail, the loader skips them and continues with the remaining ranked documents.
 
 ## Deployment
 The project outputs a static bundle (`dist/`). Deploy the contents of `dist/` to any static host (GitHub Pages, Vercel, Netlify, etc.).
