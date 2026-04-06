@@ -11,6 +11,12 @@ const formatDate = (dateString?: string | null) => {
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
+const formatCompactId = (value?: string | null) => {
+  if (!value) return "—";
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
+};
+
 /** Compute average from the dynamic categories array, or from the average_score */
 const averageScore = (review: Review | null): number | null => {
   if (!review) return null;
@@ -222,10 +228,14 @@ const ReviewPage = () => {
           >
             ← Back
           </button>
-          <div className="ml-auto text-right text-xs uppercase tracking-[0.35em] text-white/60">
-            <p>Paper ID</p>
-            <p className="text-lg font-semibold text-white">{review.paper_id || "—"}</p>
-            <p className="mt-1 text-white/70">Review #{review.id}</p>
+          <div className="ml-auto max-w-full text-left text-[10px] uppercase tracking-[0.28em] text-white/60 md:max-w-[24rem] md:text-right">
+            <p>Arweave TXID</p>
+            <p className="mt-2 text-base font-semibold normal-case tracking-[0.08em] text-white md:text-lg">
+              {formatCompactId(review.paper_id)}
+            </p>
+            <p className="mt-1 break-all text-[9px] normal-case tracking-[0.12em] text-white/45">
+              {review.id}
+            </p>
           </div>
         </header>
 

@@ -53,6 +53,12 @@ const formatDate = (dateString?: string | null) => {
     : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
+const formatCompactId = (value?: string | null) => {
+  if (!value) return "—";
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
+};
+
 const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = null }: FeaturedPanelProps) => {
   const [detailedReviews, setDetailedReviews] = useState<Review[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -78,23 +84,23 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
       setDetailLoading(true);
       setDetailError(null);
       try {
-        const fetched = await Promise.allSettled(
-          featuredTxids.map(async (txid) => {
-            const review = await fetchReviewFromArweave(txid);
-            return review;
-          })
-        );
+        let featuredReview: Review | null = null;
+
+        for (const txid of featuredTxids) {
+          try {
+            featuredReview = await fetchReviewFromArweave(txid);
+            break;
+          } catch (error) {
+            console.error(`Failed to load featured review ${txid}`, error);
+          }
+        }
+
+        if (!featuredReview) {
+          throw new Error("Featured research could not be loaded from Arweave");
+        }
 
         if (!cancelled) {
-          const reviews = fetched
-            .filter((result): result is PromiseFulfilledResult<Review> => result.status === "fulfilled")
-            .map((result) => result.value);
-
-          if (!reviews.length) {
-            throw new Error("Featured research could not be loaded from Arweave");
-          }
-
-          setDetailedReviews(reviews);
+          setDetailedReviews([featuredReview]);
         }
       } catch (err) {
         if (!cancelled) setDetailError((err as Error).message || "Failed to load featured research");
@@ -118,18 +124,16 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
       .slice(0, 5)
       .map((category) => ({ label: category.label, value: normalizeScore(category.score) }));
 
-    while (topCategories.length < 5) {
-      topCategories.push({ label: `Metric ${topCategories.length + 1}`, value: null });
-    }
-
     return topCategories;
   }, [featuredReview]);
+
+  const hasRatings = ratings.some(({ value }) => value !== null);
 
   const overviewText = getNarrative(featuredReview);
   const average = averageScore(featuredReview);
 
   const meta = [
-    { label: "Paper", value: featuredReview?.paper_id || "—" },
+    { label: "TXID", value: formatCompactId(featuredReview?.paper_id) },
     { label: "Published", value: formatDate(featuredReview?.created_at) },
     { label: "Average Score", value: average !== null ? `${average}%` : "Pending" },
     { label: "Sections", value: countSections(featuredReview) ?? "—" }
@@ -200,7 +204,9 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
                 {featuredReview.title || "Untitled Review"}
               </h3>
               {featuredReview.paper_id && (
-                <p className="text-sm uppercase tracking-[0.2em] text-white/60">Paper ID: {featuredReview.paper_id}</p>
+                <p className="text-sm uppercase tracking-[0.2em] text-white/60 break-all">
+                  TXID: {featuredReview.paper_id}
+                </p>
               )}
             </header>
 
@@ -229,35 +235,39 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
               </Link>
             </section>
 
-            <div className="grid grid-cols-5 gap-5 justify-items-center">
-              {ratings.map(({ label, value }, index) => {
-                const arcColor = ratingColors[index % ratingColors.length] ?? "#59b8ff";
-                const angle = (value ?? 0) * 3.6;
-                const columnPositions = [2, 4, 1, 3, 5];
-                return (
-                  <div
-                    key={label}
-                    className="flex flex-col items-center gap-3 text-xs uppercase tracking-wide"
-                    style={{ gridColumn: `${columnPositions[index]} / span 1` }}
-                  >
-                    <span className="text-center text-white/70">{label.toUpperCase()}</span>
+            {hasRatings ? (
+              <div className="grid grid-cols-2 gap-5 justify-items-center md:grid-cols-5">
+                {ratings.map(({ label, value }, index) => {
+                  const arcColor = ratingColors[index % ratingColors.length] ?? "#59b8ff";
+                  const angle = (value ?? 0) * 3.6;
+                  return (
                     <div
-                      className="relative h-28 w-28 rounded-full"
-                      style={{
-                        background:
-                          `radial-gradient(circle at center, #1a2247 63%, transparent 64%), ` +
-                          `conic-gradient(${arcColor} ${angle}deg, rgba(255,255,255,0.12) 0)`
-                      }}
+                      key={label}
+                      className="flex flex-col items-center gap-3 text-xs uppercase tracking-wide"
                     >
-                      <div className="absolute inset-[14px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-[1.15rem] font-semibold text-white">
-                        {value !== null ? value : "—"}
-                        {value !== null && <span className="text-[0.65rem] font-normal text-white/60">%</span>}
+                      <span className="text-center text-white/70">{label.toUpperCase()}</span>
+                      <div
+                        className="relative h-28 w-28 rounded-full"
+                        style={{
+                          background:
+                            `radial-gradient(circle at center, #1a2247 63%, transparent 64%), ` +
+                            `conic-gradient(${arcColor} ${angle}deg, rgba(255,255,255,0.12) 0)`
+                        }}
+                      >
+                        <div className="absolute inset-[14px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-[1.15rem] font-semibold text-white">
+                          {value !== null ? value : "—"}
+                          {value !== null && <span className="text-[0.65rem] font-normal text-white/60">%</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-[#111936] px-4 py-3 text-sm text-white/70">
+                This review does not include category score breakdowns yet.
+              </div>
+            )}
           </article>
         )}
       </div>
