@@ -1,9 +1,17 @@
-@import url("https://fonts.googleapis.com/css2?family=Audiowide&display=swap");
-/* Neon header font - pulls Audiowide for a blocky outline look */
+@import url("https://fonts.googleapis.com/css2?family=Audiowide&family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --page-bg: #09111f;
+  --page-bg-deep: #060c18;
+  --surface: rgba(20, 28, 56, 0.9);
+  --surface-border: rgba(255, 255, 255, 0.14);
+  --accent-soft: rgba(159, 195, 255, 0.16);
+  --accent-line: rgba(132, 171, 255, 0.52);
+}
 
 html,
 body,
@@ -12,24 +20,36 @@ body,
 }
 
 body {
-  font-family: "Space Grotesk", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #12182b;
+  font-family: "Space Grotesk", "Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(122, 158, 255, 0.22), transparent 26%),
+    radial-gradient(circle at 82% 12%, rgba(88, 214, 255, 0.14), transparent 24%),
+    radial-gradient(circle at 50% 120%, rgba(51, 95, 180, 0.16), transparent 30%),
+    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
   color: #ffffff;
+  letter-spacing: -0.01em;
 }
 
 .gradient-bg {
   position: absolute;
   inset: -10% 0;
-  background: none;
-  filter: none;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(119, 163, 255, 0.24), transparent 24%),
+    radial-gradient(circle at 82% 16%, rgba(84, 224, 255, 0.14), transparent 18%),
+    radial-gradient(circle at 55% 65%, rgba(43, 81, 118, 0.24), transparent 28%);
+  filter: blur(12px);
   z-index: 0;
 }
 
 .noise-overlay {
   position: absolute;
   inset: 0;
-  background-image: none;
-  opacity: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent 92%);
+  opacity: 0.5;
   z-index: 0;
   pointer-events: none;
 }
@@ -60,17 +80,15 @@ body {
 .neon-heading {
   display: inline-block;
   margin: 0 auto;
-  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 1.08rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  line-height: 1.05;
+  font-family: "Audiowide", "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.1;
   text-transform: uppercase;
   white-space: nowrap;
-  color: #fdf9ff;
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.25),
-    0 0 6px rgba(110, 215, 255, 0.1);
+  color: #f4f7ff;
+  text-shadow: none;
 }
 
 .neon-heading-left {
@@ -79,42 +97,33 @@ body {
 
 .neon-heading-compact {
   display: inline-block;
-  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 1rem;
+  font-family: "Audiowide", "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 0.92rem;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #fdf9ff;
-  -webkit-text-stroke: 1px rgba(143, 180, 255, 0.18);
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.22),
-    0 0 5px rgba(110, 215, 255, 0.08);
+  color: #f4f7ff;
+  text-shadow: none;
 }
 
 .neon-heading::selection {
   background: rgba(143, 180, 255, 0.18);
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.3),
-    0 0 5px rgba(110, 215, 255, 0.12);
+  text-shadow: none;
 }
 
 .neon-underline {
   display: block;
-  margin: 10px auto 0;
-  width: 78px;
-  height: 2px;
+  margin: 12px auto 0;
+  width: 68px;
+  height: 4px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(110, 215, 255, 0) 0%, rgba(110, 215, 255, 0.58) 50%, rgba(110, 215, 255, 0) 100%);
-  box-shadow:
-    0 0 6px rgba(110, 215, 255, 0.14);
+  background: linear-gradient(90deg, rgba(159, 195, 255, 0.14) 0%, rgba(159, 195, 255, 0.84) 50%, rgba(159, 195, 255, 0.14) 100%);
+  box-shadow: 0 8px 18px rgba(95, 135, 230, 0.16);
 }
 
 .featured-heading {
   color: #ffffff;
-  -webkit-text-stroke: 0.5px #99c7ff;
-  text-shadow:
-    0 0 3px rgba(255, 255, 255, 0.22),
-    0 0 10px rgba(110, 215, 255, 0.1);
+  text-shadow: none;
 }
 
 .featured-chip {
@@ -126,7 +135,7 @@ body {
   background: transparent;
   color: #fdf9ff;
   -webkit-text-stroke: 1px rgba(143, 180, 255, 0.36);
-  font-family: "Audiowide", "Space Grotesk", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Audiowide", "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-weight: 700;
   font-size: 1.6rem;
   text-transform: uppercase;
@@ -140,29 +149,27 @@ body {
 
 .custom-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #ffffff rgba(255, 255, 255, 0.4);
+  scrollbar-color: rgba(159, 195, 255, 0.65) rgba(255, 255, 255, 0.08);
   scrollbar-gutter: stable;
 }
 
 .custom-scroll::-webkit-scrollbar {
-  width: 12px;
-  background: rgba(255, 255, 255, 0.3);
+  width: 10px;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .custom-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 999px;
 }
 
 .custom-scroll::-webkit-scrollbar-thumb {
-  background: #ffffff !important;
+  background: rgba(159, 195, 255, 0.72) !important;
   border-radius: 999px;
-  border: 3px solid rgba(255, 255, 255, 0.35);
-  box-shadow:
-    0 0 10px rgba(255, 255, 255, 0.55),
-    0 0 18px rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(8, 16, 33, 0.18);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #ffffff !important;
+  background: rgba(185, 213, 255, 0.84) !important;
 }

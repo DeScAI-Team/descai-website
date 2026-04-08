@@ -1,5 +1,5 @@
 import type { DiscoveredToken, TokenPlatform, TokenSource } from "@/types/token";
-import { extractRecords, extractTokenCore, isRecord, looksLikeBioIpt } from "@/utils/tokenNormalization";
+import { extractLooseTokenFields, extractRecords, extractTokenCore, isRecord, looksLikeBioIpt, parseChain } from "@/utils/tokenNormalization";
 
 const PUMP_DISCOVERY_URL = "/api/pump-science/token-tickers";
 const BIODAO_DAOS_URL = "/api/bio/liquid-daos";
@@ -31,13 +31,28 @@ type NormalizeOptions = {
   skipRecord?: (record: JsonRecord) => boolean;
 };
 
+const fallbackSeededCore = (record: JsonRecord) => {
+  if (!isRecord(record.marketSeed)) return null;
+
+  const loose = extractLooseTokenFields(record);
+  if (!loose) return null;
+
+  return {
+    symbol: loose.symbol,
+    name: loose.name,
+    address: null,
+    chain: parseChain(record.chain ?? record.chainId ?? record.networkId),
+    coinKey: null
+  };
+};
+
 const normalizeRecords = (records: JsonRecord[], options: NormalizeOptions): DiscoveredToken[] => {
   const now = Date.now();
   const normalized: DiscoveredToken[] = [];
 
   for (const record of records) {
     if (options.skipRecord?.(record)) continue;
-    const core = extractTokenCore(record);
+    const core = extractTokenCore(record) ?? fallbackSeededCore(record);
     if (!core) continue;
     const cleanSymbol = core.symbol.replace(/\s+/g, "").toUpperCase();
     const symbol = cleanSymbol.startsWith("$") ? cleanSymbol : `$${cleanSymbol}`;

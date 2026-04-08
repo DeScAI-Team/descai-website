@@ -4,8 +4,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
-        display: ["Press Start 2P", "Space Grotesk", "ui-serif"]
+        sans: ["Space Grotesk", "Sora", "system-ui", "sans-serif"],
+        display: ["Sora", "Space Grotesk", "system-ui", "sans-serif"]
       },
       colors: {
         midnight: "#12182b",

@@ -70,7 +70,6 @@ const HomePage = () => {
                 sourceError={featuredError}
               />
               <TokenPanel />
-              <Footer />
             </div>
           </div>
 
@@ -78,6 +77,10 @@ const HomePage = () => {
             <InsightsPanel />
           </aside>
         </main>
+
+        <div className="mx-auto mt-6 w-full">
+          <Footer />
+        </div>
       </div>
     </div>
   );

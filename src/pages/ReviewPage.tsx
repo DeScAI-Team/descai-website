@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchReviewFromArweave } from "@/api/reviews";
+import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import type { Review, ReviewSection } from "@/types/review";
 
@@ -295,9 +296,10 @@ const ReviewPage = () => {
       <div className="gradient-bg pointer-events-none" aria-hidden="true" />
       <div className="noise-overlay" aria-hidden="true" />
 
-      <div className="relative z-10 flex flex-col items-center gap-10">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-10">
         <Navbar />
         <main className="w-full max-w-5xl">{renderBody()}</main>
+        <Footer />
       </div>
     </div>
   );

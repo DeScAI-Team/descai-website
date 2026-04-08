@@ -22,13 +22,10 @@ const AllTokensPage = () => {
       tokens.filter(
         (token) =>
           token.chain !== "unknown" &&
-          token.coinKey &&
           (token.market?.price ?? 0) > 0 &&
           (token.market?.fdv ?? 0) > 0 &&
           token.market?.price !== null &&
           token.market?.price !== undefined &&
-          token.market?.priceChange24h !== null &&
-          token.market?.priceChange24h !== undefined &&
           token.market?.fdv !== null &&
           token.market?.fdv !== undefined
       ),
@@ -62,9 +59,7 @@ const AllTokensPage = () => {
       token.market?.price !== null &&
       token.market?.price !== undefined &&
       token.market?.fdv !== null &&
-      token.market?.fdv !== undefined &&
-      token.market?.priceChange24h !== null &&
-      token.market?.priceChange24h !== undefined
+      token.market?.fdv !== undefined
   ).length;
 
   const handleSort = (field: TokenSortField) => {
@@ -100,7 +95,7 @@ const AllTokensPage = () => {
                 >
                   Back
                 </Link>
-                <h1 className="text-xl font-semibold uppercase tracking-[0.2em] text-white md:text-2xl">All DeSci Tokens</h1>
+                <h1 className="text-xl font-semibold uppercase tracking-[0.2em] text-white md:text-2xl">All DeScAI Tokens</h1>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -129,7 +124,7 @@ const AllTokensPage = () => {
                   {filtered.length} token{filtered.length === 1 ? "" : "s"} | Live fields on {withMarketData}
                 </p>
                 <p>Last market sync: {lastUpdateLabel}</p>
-                <p className="text-white/45">Only verified tokens with complete market data are shown.</p>
+                <p className="text-white/45">Only verified tokens with pricing and cap data are shown.</p>
               </div>
             </div>
 
