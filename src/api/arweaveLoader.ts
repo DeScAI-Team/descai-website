@@ -17,11 +17,12 @@ export type RankedReviewSummary = ReviewListItem & {
 type ReviewIndexResult = {
   summaries: RankedReviewSummary[];
   featuredTxids: string[];
-  byTxid: Record<string, { name: string; date: string; average_score: number | null }>;
+  byTxid: Record<string, { name: string; date: string; average_score: number | null; dao_name: string | null }>;
 };
 
 const INDEX_API_URL = import.meta.env.VITE_ARWEAVE_INDEX_API_URL ?? "/api/index";
 const ARWEAVE_GATEWAY_URL = (import.meta.env.VITE_ARWEAVE_GATEWAY_URL ?? "https://arweave.net").replace(/\/+$/, "");
+const FEATURED_REVIEW_DAO = "NootropicsDAO";
 
 let reviewIndexPromise: Promise<ReviewIndexResult> | null = null;
 const reviewPromiseCache = new Map<string, Promise<Review>>();
@@ -84,11 +85,12 @@ const compareByScoreDesc = (left: { average_score: number | null; created_at: st
 const getArweaveDocumentUrl = (txid: string) => `${ARWEAVE_GATEWAY_URL}/${txid}`;
 
 const parseSummary = (txid: string, document: ArweaveDocument, fallbackDate?: string | null) => {
-  const name = readString(document, ["name", "dao_name", "title"]) ?? "Untitled Review";
+  const title = readString(document, ["name", "title"]) ?? readString(document, ["dao_name"]) ?? "Untitled Review";
+  const dao_name = readString(document, ["dao_name"]);
   const date = readString(document, ["date", "review_date", "created_at"]) ?? fallbackDate ?? new Date(0).toISOString();
   const average_score = readNumber(document, ["average_score"]);
 
-  return { txid, name, date, average_score };
+  return { txid, title, dao_name, date, average_score };
 };
 
 const normalizeIndexTransactions = (payload: unknown): ArweaveIndexTransaction[] => {
@@ -137,7 +139,7 @@ export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewInde
     );
 
     const summaries = documents
-      .filter((result): result is PromiseFulfilledResult<{ txid: string; name: string; date: string; average_score: number | null }> => result.status === "fulfilled")
+      .filter((result): result is PromiseFulfilledResult<{ txid: string; title: string; dao_name: string | null; date: string; average_score: number | null }> => result.status === "fulfilled")
       .map((result) => result.value)
       .sort((left, right) => compareByScoreDesc({ average_score: left.average_score, created_at: left.date }, { average_score: right.average_score, created_at: right.date }));
 
@@ -145,16 +147,22 @@ export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewInde
       throw new Error("No Arweave review documents were available");
     }
 
-    const featuredTxids = summaries.slice(0, 5).map((item) => item.txid);
+    const preferredFeaturedSummaries = summaries.filter(
+      (summary) => summary.dao_name?.toLowerCase() === FEATURED_REVIEW_DAO.toLowerCase()
+    );
+    const featuredTxids = (preferredFeaturedSummaries.length ? preferredFeaturedSummaries : summaries)
+      .slice(0, 5)
+      .map((item) => item.txid);
     const featuredSet = new Set(featuredTxids);
 
     return {
       summaries: summaries.map((summary) => ({
         id: summary.txid,
         txid: summary.txid,
-        title: summary.name,
+        title: summary.title,
         created_at: summary.date,
         paper_id: summary.txid,
+        dao_name: summary.dao_name,
         average_score: summary.average_score,
         featured: featuredSet.has(summary.txid)
       })),
@@ -162,7 +170,7 @@ export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewInde
       byTxid: Object.fromEntries(
         summaries.map((summary) => [
           summary.txid,
-          { name: summary.name, date: summary.date, average_score: summary.average_score }
+          { name: summary.title, date: summary.date, average_score: summary.average_score, dao_name: summary.dao_name }
         ])
       )
     };
@@ -222,9 +230,10 @@ const buildInfoSections = (document: ArweaveDocument): ReviewInfoSection[] => {
 const mapDocumentToReview = (txid: string, document: ArweaveDocument): Review => ({
   id: txid,
   txid,
-  title: readString(document, ["name", "dao_name", "title"]) ?? "Untitled Review",
+  title: readString(document, ["name", "title"]) ?? readString(document, ["dao_name"]) ?? "Untitled Review",
   created_at: readString(document, ["date", "review_date", "created_at"]) ?? new Date().toISOString(),
   paper_id: txid,
+  dao_name: readString(document, ["dao_name"]),
   average_score: readNumber(document, ["average_score"]),
   categories: buildCategories(document),
   info: buildInfoSections(document)

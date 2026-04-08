@@ -59,6 +59,8 @@ const formatCompactId = (value?: string | null) => {
   return `${value.slice(0, 8)}...${value.slice(-6)}`;
 };
 
+const isSingleLineCategoryLabel = (label: string) => label.trim().toLowerCase() === "tokenomics governance";
+
 const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = null }: FeaturedPanelProps) => {
   const [detailedReviews, setDetailedReviews] = useState<Review[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -133,6 +135,7 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
   const average = averageScore(featuredReview);
 
   const meta = [
+    { label: "Reviewed By", value: featuredReview?.dao_name ?? "Unknown DAO" },
     { label: "TXID", value: formatCompactId(featuredReview?.paper_id) },
     { label: "Published", value: formatDate(featuredReview?.created_at) },
     { label: "Average Score", value: average !== null ? `${average}%` : "Pending" },
@@ -203,6 +206,9 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
               >
                 {featuredReview.title || "Untitled Review"}
               </h3>
+              <p className="text-xs uppercase tracking-[0.3em] text-[#9fc3ff]">
+                Reviewed by {featuredReview.dao_name ?? "Unknown DAO"}
+              </p>
               {featuredReview.paper_id && (
                 <p className="text-sm uppercase tracking-[0.2em] text-white/60 break-all">
                   TXID: {featuredReview.paper_id}
@@ -210,7 +216,7 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
               )}
             </header>
 
-            <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-[1fr_1fr_1fr_auto] md:gap-5">
+            <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-5 md:gap-5">
               {meta.map(({ label, value }) => (
                 <div key={label}>
                   <dt className="text-white/60 whitespace-nowrap">{label}</dt>
@@ -245,7 +251,9 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
                       key={label}
                       className="flex flex-col items-center gap-3 text-xs uppercase tracking-wide"
                     >
-                      <span className="text-center text-white/70">{label.toUpperCase()}</span>
+                      <span className={`text-center text-white/70 ${isSingleLineCategoryLabel(label) ? "whitespace-nowrap" : ""}`}>
+                        {label.toUpperCase()}
+                      </span>
                       <div
                         className="relative h-28 w-28 rounded-full"
                         style={{

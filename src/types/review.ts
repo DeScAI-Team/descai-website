@@ -26,6 +26,7 @@ export type ReviewListItem = {
   created_at: string;
   title: string | null;
   paper_id: string | null;
+  dao_name?: string | null;
   average_score?: number | null;
   featured?: boolean;
 };

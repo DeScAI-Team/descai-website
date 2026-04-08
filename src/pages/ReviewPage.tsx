@@ -42,6 +42,8 @@ const humanizeKey = (key: string): string =>
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
+const isSingleLineCategoryLabel = (label: string) => label.trim().toLowerCase() === "tokenomics governance";
+
 const SectionBlock = ({ title, icon, content }: { title: string; icon: string; content?: ReviewSection | null }) => {
   if (!content) return null;
 
@@ -83,7 +85,7 @@ const ScoreChip = ({ label, score, color }: { label: string; score: number | nul
 
   return (
     <div className="flex flex-col items-center gap-3 text-xs uppercase tracking-wide">
-      <span className="text-center text-white/70">{label}</span>
+      <span className={`text-center text-white/70 ${isSingleLineCategoryLabel(label) ? "whitespace-nowrap" : ""}`}>{label}</span>
       <div
         className="relative h-24 w-24 rounded-full"
         style={{
