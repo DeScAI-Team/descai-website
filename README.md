@@ -22,8 +22,8 @@ npm install
 Create `.env` from `.env.example` and set:
 - `VITE_ARWEAVE_INDEX_API_URL` (defaults to `/api/index`)
 - `VITE_ARWEAVE_GATEWAY_URL` (defaults to `https://arweave.net`)
-- `VITE_MOLECULE_API_KEY` (required for Molecule token discovery)
-- Optional overrides: `VITE_MOLECULE_GRAPHQL_ENDPOINT`, `VITE_DEFILLAMA_BASE_URL`
+- `MOLECULE_API_KEY` (required for Molecule token discovery; server-only)
+- Optional overrides: `MOLECULE_GRAPHQL_ENDPOINT`, `VITE_DEFILLAMA_BASE_URL`
 
 ### Local Development
 ```bash
@@ -35,7 +35,7 @@ To power Arweave review data locally, start the index API in a second terminal:
 ```bash
 npm run index-api
 ```
-The Vite dev server proxies `/api/index` to `http://localhost:3001/api/index`.
+The Vite dev server proxies `/api/*` to `http://localhost:3001`.
 
 ### Build & Preview
 ```bash
@@ -63,7 +63,8 @@ src/
 
 ## DeSci Token Data Flow
 - Discovery runs in frontend and is cached in `localStorage` for 24h.
-- Sources: Pump.Science, Molecule GraphQL, BioDAO DAO/Agent APIs.
+- All discovery sources are fetched via the local API server to keep browser requests same-origin.
+- Sources: Pump.Science, BioDAO DAO/Agent APIs, and a local API proxy for Molecule GraphQL.
 - BioDAO IPT reposts are filtered out from BioDAO ingestion.
 - Market metrics are fetched from DefiLlama in batched requests.
 - “All DeSci Tokens” page rotates refresh chunks each minute to reduce call pressure.
@@ -77,4 +78,4 @@ src/
 - If the index request fails, homepage/search surfaces the fetch error. If individual Arweave documents fail, the loader skips them and continues with the remaining ranked documents.
 
 ## Deployment
-The project outputs a static bundle (`dist/`). Deploy the contents of `dist/` to any static host (GitHub Pages, Vercel, Netlify, etc.).
+The frontend still outputs a static bundle (`dist/`), but token discovery now depends on server-side `/api/*` endpoints. Deploy the Express API alongside the frontend or provide equivalent serverless routes/reverse proxies.

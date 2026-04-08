@@ -1,40 +1,12 @@
 import type { DiscoveredToken, TokenPlatform, TokenSource } from "@/types/token";
 import { extractRecords, extractTokenCore, isRecord, looksLikeBioIpt } from "@/utils/tokenNormalization";
 
-const PUMP_DISCOVERY_URL = "https://pump.science/api/token-tickers";
-const BIODAO_DAOS_URL = "https://app.bio.xyz/api/liquid-daos";
-const BIODAO_AGENTS_URL = "https://app.bio.xyz/api/liquid-agents";
-const MOLECULE_GRAPHQL_ENDPOINT =
-  (import.meta.env.VITE_MOLECULE_GRAPHQL_ENDPOINT as string | undefined) ??
-  "https://production.graphql.api.molecule.xyz/graphql";
-const MOLECULE_API_KEY = import.meta.env.VITE_MOLECULE_API_KEY as string | undefined;
+const PUMP_DISCOVERY_URL = "/api/pump-science/token-tickers";
+const BIODAO_DAOS_URL = "/api/bio/liquid-daos";
+const BIODAO_AGENTS_URL = "/api/bio/liquid-agents";
+const MOLECULE_DISCOVERY_URL = "/api/molecule/ipts";
 
 type JsonRecord = Record<string, unknown>;
-
-type GraphQLResponse<T> = {
-  data?: T;
-  errors?: Array<{ message?: string }>;
-};
-
-type MoleculeIptRecord = {
-  id?: string;
-  l2TokenAddress?: string | null;
-  name?: string | null;
-  symbol?: string | null;
-  markets?: Array<{
-    chainId?: number | null;
-    usdPrice?: number | null;
-    usdPrice24hrPercentageChange?: number | null;
-    marketCapUsd?: number | null;
-    tradingVolume24hr?: number | null;
-    chain?: {
-      name?: string | null;
-      chainId?: number | null;
-    } | null;
-  }> | null;
-};
-
-type MoleculeMarketRecord = NonNullable<MoleculeIptRecord["markets"]>[number];
 
 const safeFetchJson = async (url: string): Promise<unknown> => {
   const response = await fetch(url, { headers: { Accept: "application/json" } });
@@ -44,108 +16,10 @@ const safeFetchJson = async (url: string): Promise<unknown> => {
   return response.json();
 };
 
-const moleculeRequest = async <T>(query: string): Promise<T> => {
-  if (!MOLECULE_API_KEY) {
-    throw new Error("Missing VITE_MOLECULE_API_KEY");
-  }
-  const response = await fetch(MOLECULE_GRAPHQL_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "x-api-key": MOLECULE_API_KEY
-    },
-    body: JSON.stringify({ query })
-  });
-
-  if (!response.ok) {
-    throw new Error(`Molecule request failed (${response.status})`);
-  }
-  const parsed = (await response.json()) as GraphQLResponse<T>;
-  if (parsed.errors?.length) {
-    const message = parsed.errors.map((entry) => entry.message).filter(Boolean).join("; ");
-    throw new Error(message || "Molecule GraphQL error");
-  }
-  if (!parsed.data) {
-    throw new Error("Molecule response missing data");
-  }
-  return parsed.data;
-};
-
 const fetchMoleculeRecords = async (): Promise<JsonRecord[]> => {
-  if (!MOLECULE_API_KEY) {
-    return [];
-  }
-
-  const query = `
-    query DiscoverMoleculeTokens {
-      ipts(limit: 500) {
-        id
-        l2TokenAddress
-        name
-        symbol
-        markets {
-          chainId
-          usdPrice
-          usdPrice24hrPercentageChange
-          marketCapUsd
-          tradingVolume24hr
-          chain {
-            name
-            chainId
-          }
-        }
-      }
-    }
-  `;
-
   try {
-    const data = await moleculeRequest<{ ipts?: MoleculeIptRecord[] }>(query);
-    const ipts = data.ipts ?? [];
-    return ipts
-      .map((ipt) => {
-        const markets = (ipt.markets ?? []).filter(Boolean) as MoleculeMarketRecord[];
-        const scoredMarkets = [...markets]
-          .filter((market) => (market.chainId ?? market.chain?.chainId) !== null && (market.chainId ?? market.chain?.chainId) !== undefined)
-          .sort((left, right) => {
-            const leftMcap = left.marketCapUsd ?? 0;
-            const rightMcap = right.marketCapUsd ?? 0;
-            if (rightMcap !== leftMcap) return rightMcap - leftMcap;
-            const leftVol = left.tradingVolume24hr ?? 0;
-            const rightVol = right.tradingVolume24hr ?? 0;
-            if (rightVol !== leftVol) return rightVol - leftVol;
-            const leftPrice = left.usdPrice ?? 0;
-            const rightPrice = right.usdPrice ?? 0;
-            return rightPrice - leftPrice;
-          });
-
-        const selectedMarket =
-          scoredMarkets.find((market) => (market.usdPrice ?? 0) > 0 && (market.marketCapUsd ?? 0) > 0) ??
-          scoredMarkets.find((market) => (market.usdPrice ?? 0) > 0) ??
-          scoredMarkets[0];
-
-        const chainId = selectedMarket?.chainId ?? selectedMarket?.chain?.chainId ?? undefined;
-        const chain = selectedMarket?.chain?.name ?? undefined;
-
-        return {
-          address: ipt.l2TokenAddress ?? ipt.id ?? undefined,
-          symbol: ipt.symbol ?? undefined,
-          name: ipt.name ?? undefined,
-          chainId,
-          chain,
-          marketSeed: selectedMarket
-            ? {
-                price: (selectedMarket.usdPrice ?? 0) > 0 ? selectedMarket.usdPrice ?? null : null,
-                priceChange24h: selectedMarket.usdPrice24hrPercentageChange ?? null,
-                marketCap: (selectedMarket.marketCapUsd ?? 0) > 0 ? selectedMarket.marketCapUsd ?? null : null,
-                fdv: (selectedMarket.marketCapUsd ?? 0) > 0 ? selectedMarket.marketCapUsd ?? null : null,
-                volume24h: selectedMarket.tradingVolume24hr ?? null,
-                timestampMs: Date.now()
-              }
-            : undefined
-        } satisfies JsonRecord;
-      })
-      .filter((entry) => typeof entry.address === "string");
+    const payload = await safeFetchJson(MOLECULE_DISCOVERY_URL);
+    return extractRecords(payload);
   } catch {
     return [];
   }
