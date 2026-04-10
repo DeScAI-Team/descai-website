@@ -25,6 +25,19 @@ const snapshotsTimestamp = (snapshots: Record<string, TokenMarketSnapshot>): num
   return Math.max(...timestamps);
 };
 
+const marketPriority = (token: DiscoveredToken, snapshots: Record<string, TokenMarketSnapshot>) => {
+  const snapshot = token.coinKey ? snapshots[token.coinKey] : undefined;
+  return (
+    snapshot?.fdv ??
+    snapshot?.marketCap ??
+    token.marketSeed?.fdv ??
+    token.marketSeed?.marketCap ??
+    snapshot?.price ??
+    token.marketSeed?.price ??
+    -1
+  );
+};
+
 export const useDesciTokens = ({
   mode,
   prioritizedCoinKeys = [],
@@ -48,6 +61,15 @@ export const useDesciTokens = ({
     snapshotsRef.current = snapshots;
   }, [snapshots]);
 
+  const selectHomeTargets = useCallback(
+    (tokens: DiscoveredToken[]) => {
+      return [...tokens]
+        .sort((left, right) => marketPriority(right, snapshotsRef.current) - marketPriority(left, snapshotsRef.current))
+        .slice(0, 24);
+    },
+    []
+  );
+
   const buildRefreshTargets = useCallback((): DiscoveredToken[] => {
     const tokens = discoveredRef.current;
     if (!tokens.length) return [];
@@ -64,21 +86,13 @@ export const useDesciTokens = ({
       return Array.from(merged.values());
     }
 
-    const sortedByFdv = [...tokens].sort((left, right) => {
-      const leftKey = left.coinKey;
-      const rightKey = right.coinKey;
-      const fdvLeft = leftKey && leftKey in snapshotsRef.current ? snapshotsRef.current[leftKey].fdv ?? -1 : -1;
-      const fdvRight = rightKey && rightKey in snapshotsRef.current ? snapshotsRef.current[rightKey].fdv ?? -1 : -1;
-      return fdvRight - fdvLeft;
-    });
-
-    const homeTargets = sortedByFdv.slice(0, 24);
+    const homeTargets = selectHomeTargets(tokens);
     const merged = new Map<string, DiscoveredToken>();
     for (const token of [...prioritizedTokens, ...homeTargets]) {
       merged.set(token.coinKey ?? token.id, token);
     }
     return Array.from(merged.values());
-  }, [mode, prioritizedCoinKeys, rotationBatchSize]);
+  }, [mode, prioritizedCoinKeys, rotationBatchSize, selectHomeTargets]);
 
   const refreshNow = useCallback(async () => {
     const targets = mode === "all" ? discoveredRef.current : buildRefreshTargets();
@@ -108,7 +122,7 @@ export const useDesciTokens = ({
         if (cancelled) return;
         setDiscovered(tokens);
 
-        const initialTargets = mode === "all" ? tokens : tokens.slice(0, Math.min(tokens.length, 60));
+        const initialTargets = mode === "all" ? tokens : selectHomeTargets(tokens);
         if (initialTargets.length) {
           const merged = await refreshSnapshots(initialTargets, snapshotsRef.current);
           if (!cancelled) {
@@ -131,7 +145,7 @@ export const useDesciTokens = ({
     return () => {
       cancelled = true;
     };
-  }, [mode]);
+  }, [mode, selectHomeTargets]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {

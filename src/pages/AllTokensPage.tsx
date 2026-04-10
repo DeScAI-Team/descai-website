@@ -23,11 +23,8 @@ const AllTokensPage = () => {
         (token) =>
           token.chain !== "unknown" &&
           (token.market?.price ?? 0) > 0 &&
-          (token.market?.fdv ?? 0) > 0 &&
           token.market?.price !== null &&
-          token.market?.price !== undefined &&
-          token.market?.fdv !== null &&
-          token.market?.fdv !== undefined
+          token.market?.price !== undefined
       ),
     [tokens]
   );
@@ -57,9 +54,7 @@ const AllTokensPage = () => {
   const withMarketData = filtered.filter(
     (token) =>
       token.market?.price !== null &&
-      token.market?.price !== undefined &&
-      token.market?.fdv !== null &&
-      token.market?.fdv !== undefined
+      token.market?.price !== undefined
   ).length;
 
   const handleSort = (field: TokenSortField) => {
@@ -121,10 +116,10 @@ const AllTokensPage = () => {
               </label>
               <div className="text-xs text-white/60">
                 <p>
-                  {filtered.length} token{filtered.length === 1 ? "" : "s"} | Live fields on {withMarketData}
+                  {filtered.length} token{filtered.length === 1 ? "" : "s"} | Live pricing on {withMarketData}
                 </p>
                 <p>Last market sync: {lastUpdateLabel}</p>
-                <p className="text-white/45">Only verified tokens with pricing and cap data are shown.</p>
+                <p className="text-white/45">Only verified tokens with live pricing are shown. FDV and market cap appear when available.</p>
               </div>
             </div>
 

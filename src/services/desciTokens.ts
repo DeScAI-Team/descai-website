@@ -1,5 +1,6 @@
 import { discoverAllDesciTokens } from "@/api/desciDiscovery";
 import { fetchTokenSnapshots } from "@/api/defiLlama";
+import { fallbackDiscoveredTokens } from "@/data/fallbackTokens";
 import type { DiscoveredToken, TokenMarketSnapshot, TokenWithMarketData } from "@/types/token";
 import { readJsonCache, writeJsonCache } from "@/utils/localCache";
 
@@ -58,6 +59,40 @@ export const getCachedMarketSnapshots = (): Record<string, TokenMarketSnapshot> 
   return readMarketCache().snapshots;
 };
 
+const seededSnapshotFor = (token: DiscoveredToken): TokenMarketSnapshot | undefined => {
+  if (!token.marketSeed) return undefined;
+
+  return {
+    tokenId: token.id,
+    coinKey: token.coinKey ?? `seed:${token.id}`,
+    price: token.marketSeed.price ?? null,
+    priceChange24h: token.marketSeed.priceChange24h ?? null,
+    fdv: token.marketSeed.fdv ?? token.marketSeed.marketCap ?? null,
+    marketCap: token.marketSeed.marketCap ?? null,
+    volume24h: token.marketSeed.volume24h ?? null,
+    timestampMs: token.marketSeed.timestampMs ?? token.discoveryTimestamp
+  };
+};
+
+const mergeSnapshotWithSeed = (
+  snapshot: TokenMarketSnapshot | undefined,
+  seed: TokenMarketSnapshot | undefined
+): TokenMarketSnapshot | undefined => {
+  if (!snapshot) return seed;
+  if (!seed) return snapshot;
+
+  return {
+    ...seed,
+    ...snapshot,
+    price: snapshot.price ?? seed.price,
+    priceChange24h: snapshot.priceChange24h ?? seed.priceChange24h,
+    fdv: snapshot.fdv ?? seed.fdv,
+    marketCap: snapshot.marketCap ?? seed.marketCap,
+    volume24h: snapshot.volume24h ?? seed.volume24h,
+    timestampMs: snapshot.timestampMs ?? seed.timestampMs
+  };
+};
+
 export const getDiscoveredTokens = async (force = false): Promise<DiscoveredToken[]> => {
   const cached = readDiscoveryCache();
   if (!force && isDiscoveryFresh(cached) && cached) {
@@ -69,8 +104,12 @@ export const getDiscoveredTokens = async (force = false): Promise<DiscoveredToke
       .then((tokens) => {
         if (tokens.length) {
           writeDiscoveryCache(tokens);
+          return tokens;
         }
-        return tokens;
+
+        const fallbackTokens = fallbackDiscoveredTokens();
+        writeDiscoveryCache(fallbackTokens);
+        return fallbackTokens;
       })
       .finally(() => {
         discoveryInFlight = null;
@@ -81,11 +120,11 @@ export const getDiscoveredTokens = async (force = false): Promise<DiscoveredToke
     const discovered = await discoveryInFlight;
     if (discovered.length) return discovered;
     if (cached?.tokens?.length) return cached.tokens;
-    return [];
+    return fallbackDiscoveredTokens();
   } catch (error) {
     if (cached?.tokens?.length) return cached.tokens;
     console.error("Discovery failed", error);
-    throw error;
+    return fallbackDiscoveredTokens();
   }
 };
 
@@ -95,20 +134,7 @@ export const mergeTokensWithMarket = (
 ): TokenWithMarketData[] => {
   return tokens.map((token) => ({
     ...token,
-    market:
-      (token.coinKey ? snapshots[token.coinKey] : undefined) ??
-      (token.marketSeed
-        ? {
-            tokenId: token.id,
-            coinKey: token.coinKey ?? `seed:${token.id}`,
-            price: token.marketSeed.price ?? null,
-            priceChange24h: token.marketSeed.priceChange24h ?? null,
-            fdv: token.marketSeed.fdv ?? token.marketSeed.marketCap ?? null,
-            marketCap: token.marketSeed.marketCap ?? null,
-            volume24h: token.marketSeed.volume24h ?? null,
-            timestampMs: token.marketSeed.timestampMs ?? token.discoveryTimestamp
-          }
-        : undefined)
+    market: mergeSnapshotWithSeed(token.coinKey ? snapshots[token.coinKey] : undefined, seededSnapshotFor(token))
   }));
 };
 

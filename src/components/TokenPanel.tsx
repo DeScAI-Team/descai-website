@@ -14,11 +14,8 @@ const TokenPanel = () => {
         (token) =>
           token.chain !== "unknown" &&
           (token.market?.price ?? 0) > 0 &&
-          (token.market?.fdv ?? 0) > 0 &&
           token.market?.price !== null &&
-          token.market?.price !== undefined &&
-          token.market?.fdv !== null &&
-          token.market?.fdv !== undefined
+          token.market?.price !== undefined
       ),
     [tokens]
   );
@@ -62,7 +59,7 @@ const TokenPanel = () => {
         <p className="mt-4 text-xs text-white/55">
           Last market sync: {formattedUpdate} · auto refresh every minute
         </p>
-        <p className="mt-1 text-xs text-white/45">Showing tokens with verified chain, pricing, and cap data.</p>
+        <p className="mt-1 text-xs text-white/45">Showing tokens with verified chain and live pricing. Cap fields appear when available.</p>
         {refreshing && <p className="mt-1 text-xs text-[#ffcfef]">Refreshing live market data…</p>}
         {loading && <p className="mt-4 text-sm text-white/65">Discovering DeSci tokens…</p>}
         {error && <p className="mt-4 text-sm text-amber-200">{error}</p>}
