@@ -33,6 +33,7 @@ The API will be available at:
 - `http://localhost:3001/api/pump-science/token-tickers`
 - `http://localhost:3001/api/bio/liquid-daos`
 - `http://localhost:3001/api/bio/liquid-agents`
+- `http://localhost:3001/api/exit` (requires dev token)
 
 ### Running Alongside Web App
 To run this service concurrently with your main web application during local development:
@@ -41,8 +42,25 @@ To run this service concurrently with your main web application during local dev
 3. Split the terminal or open a new terminal tab.
 4. Start the indexer (`npm run index-api`) in the new terminal instance.
 
-### Clean Exit
-You can cleanly shut down the server by calling:
+### Clean Exit (Developer Testing)
+For development, you can cleanly stop the API by calling the `/api/exit` endpoint. To prevent unintended behavior, require a token in your `.env` file:
+```js
+ARWEAVE_EXIT_TOKEN=YOUR_TOKEN_HERE
+```
+
+After editing `.env`, restart the API server (`npm run index-api`) so the new token is loaded.
+
+Recommended request (Bearer token):
 ```bash
-curl http://localhost:3001/api/exit
+curl -i -H "Authorization: Bearer YOUR_TOKEN_HERE" http://localhost:3001/api/exit
+```
+
+Web browser convenience URL:
+```text
+http://localhost:3001/api/exit?token=YOUR_TOKEN_HERE
+```
+
+PowerShell-native alternative:
+```powershell
+Invoke-RestMethod -Uri http://localhost:3001/api/exit -Method Get -Headers @{ Authorization = "Bearer YOUR_TOKEN_HERE" }
 ```

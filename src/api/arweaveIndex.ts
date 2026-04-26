@@ -113,6 +113,7 @@ const MOLECULE_API_KEY = runtimeProcess.process?.env?.MOLECULE_API_KEY;
 const PUMP_DISCOVERY_URL = "https://pump.science/api/token-tickers";
 const BIODAO_DAOS_URL = "https://app.bio.xyz/api/liquid-daos";
 const BIODAO_AGENTS_URL = "https://app.bio.xyz/api/liquid-agents";
+const ARWEAVE_EXIT_TOKEN = runtimeProcess.process?.env?.ARWEAVE_EXIT_TOKEN;
 const UPSTREAM_CACHE_TTL_MS = 5 * 60 * 1000;
 const upstreamCache = new Map<string, CachedJsonResponse>();
 
@@ -139,6 +140,19 @@ const GQL_QUERY = `
 `;
 
 const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "Unknown error");
+const getExitRequestToken = (req: Request): string | null => {
+  const authHeader = req.header("authorization");
+  if (authHeader) {
+    const [scheme, ...tokenParts] = authHeader.trim().split(/\s+/);
+    if (scheme.toLowerCase() === "bearer") {
+      const bearerToken = tokenParts.join(" ").trim();
+      if (bearerToken) return bearerToken;
+    }
+  }
+
+  return null;
+};
+
 const MOLECULE_DISCOVERY_QUERY = `
   query DiscoverMoleculeTokens {
     ipts(limit: 500) {
@@ -403,7 +417,24 @@ const server = app.listen(PORT, () => {
 });
 
 // Endpoint to cleanly exit the API
-app.get("/api/exit", (_req: Request, res: Response) => {
+app.get("/api/exit", (req: Request, res: Response) => {
+  if (!ARWEAVE_EXIT_TOKEN) {
+    res.status(503).json({
+      error: "Exit endpoint disabled",
+      message: "Must set ARWEAVE_EXIT_TOKEN to call /api/exit."
+    });
+    return;
+  }
+
+  const providedToken = getExitRequestToken(req);
+  if (!providedToken || providedToken !== ARWEAVE_EXIT_TOKEN) {
+    res.status(401).json({
+      error: "Unauthorized",
+      message: "A valid developer token is required to shut down the server."
+    });
+    return;
+  }
+
   console.log("Shutting down Arweave Indexer...");
   res.json({ message: "Shutting down server..." });
   server.close(() => {
