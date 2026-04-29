@@ -22,7 +22,13 @@ const WALLETS = [
 ## Getting Started
 
 ### Running the Service
-The indexer has a dedicated npm script. Start the service locally with:
+Local development starts this service together with Vite:
+
+```bash
+npm run dev
+```
+
+The indexer also has a dedicated npm script. Start only the service locally with:
 
 ```bash
 npm run index-api
@@ -36,11 +42,7 @@ The API will be available at:
 - `http://localhost:3001/api/exit` (requires dev token)
 
 ### Running Alongside Web App
-To run this service concurrently with your main web application during local development:
-1. Open your integrated terminal.
-2. Start your main web app as usual (`npm run dev`).
-3. Split the terminal or open a new terminal tab.
-4. Start the indexer (`npm run index-api`) in the new terminal instance.
+`npm run dev` starts both the main web app and the indexer so Vite can proxy `/api/*` to `http://localhost:3001`.
 
 ### Clean Exit (Developer Testing)
 For development, you can cleanly stop the API by calling the `/api/exit` endpoint. To prevent unintended behavior, require a token in your `.env` file:

@@ -150,7 +150,8 @@ const getExitRequestToken = (req: Request): string | null => {
     }
   }
 
-  return null;
+  const queryToken = req.query.token;
+  return typeof queryToken === "string" && queryToken ? queryToken : null;
 };
 
 const MOLECULE_DISCOVERY_QUERY = `

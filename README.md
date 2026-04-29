@@ -31,11 +31,12 @@ npm run dev
 ```
 Then open the printed local URL (defaults to `http://localhost:5173`).
 
-To power Arweave review data locally, start the index API in a second terminal:
+This starts both the Vite dev server and the local API server. The Vite dev server proxies `/api/*` to `http://localhost:3001`.
+
+To run only the index API:
 ```bash
 npm run index-api
 ```
-The Vite dev server proxies `/api/*` to `http://localhost:3001`.
 
 ### Build & Preview
 ```bash
