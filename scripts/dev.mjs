@@ -63,5 +63,5 @@ process.on("SIGTERM", () => {
   process.exit(143);
 });
 
-start("index-api", localBin("tsx"), ["src/api/arweaveIndex.ts"]);
+start("index-api", localBin("tsx"), ["watch", "src/api/arweaveIndex.ts"]);
 start("vite", localBin("vite"), []);

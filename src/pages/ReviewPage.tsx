@@ -36,6 +36,22 @@ const SCORE_COLORS = [
 
 const SECTION_ICONS = ["💡", "📝", "🔬", "📊", "⚖️", "🏛️", "🤝", "🔗", "🧬", "📈"];
 
+type CommentPayload = {
+  body: string;
+  replyTo: string;
+};
+
+const mockExistingComment = {
+  author: "0x82f1...4c91",
+  body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. This review raises useful points for future reproducibility work."
+};
+
+// #comments Build the exact JSON shape the future Arweave publishing flow will consume.
+const createCommentPayload = (body: string, replyTo: string): CommentPayload => ({
+  body,
+  replyTo
+});
+
 /**Convert underscores to spaces for readability*/
 const humanizeKey = (key: string): string =>
   key
@@ -110,6 +126,8 @@ const ReviewPage = () => {
   const [review, setReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentPayload, setCommentPayload] = useState<CommentPayload | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -157,6 +175,19 @@ const ReviewPage = () => {
     }
     return null;
   }, [review]);
+
+  // #comments Publish currently returns JSON only; Arweave persistence can call this payload later.
+  const handlePublishComment = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!review) return;
+
+    const body = commentBody.trim();
+    if (!body) return;
+
+    const payload = createCommentPayload(body, review.title || review.paper_id || review.id);
+    setCommentPayload(payload);
+    setCommentBody("");
+  };
 
   const renderBody = () => {
     const wrap = (content: React.ReactNode) => (
@@ -250,6 +281,14 @@ const ReviewPage = () => {
           {overallScore !== null && <span className="ml-3 text-white/80">Average score: {overallScore}%</span>}
         </p>
 
+        {/* #comments Top-of-review shortcut into the flat comment section. */}
+        <a
+          href="#comments"
+          className="mt-4 inline-flex text-sm font-semibold uppercase tracking-[0.22em] text-[#9fc3ff] transition hover:text-white"
+        >
+          Jump to comments
+        </a>
+
         {narrative && (
           <div className="mt-6 rounded-2xl border border-white/15 bg-[#1a2247] px-6 py-5 text-base leading-relaxed text-white/85 shadow-inner shadow-white/10">
             {narrative}
@@ -287,6 +326,56 @@ const ReviewPage = () => {
             />
           ))}
         </div>
+
+        {/* #comments Flat, non-nested comment section for each review. */}
+        <section id="comments" className="mt-12 scroll-mt-8 rounded-2xl border border-white/15 bg-[#111936] px-6 py-6 shadow-inner shadow-white/10">
+          <header>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/55">Comments</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Discussion</h2>
+          </header>
+
+          <div className="mt-5 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-white">{mockExistingComment.author}</p>
+              <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-white/45">
+                Existing
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-white/75">{mockExistingComment.body}</p>
+          </div>
+
+          <form className="mt-5 space-y-3" onSubmit={handlePublishComment}>
+            <label htmlFor="review-comment" className="sr-only">
+              Write a comment
+            </label>
+            <textarea
+              id="review-comment"
+              value={commentBody}
+              onChange={(event) => setCommentBody(event.target.value)}
+              placeholder="Write a comment..."
+              className="min-h-32 w-full resize-y rounded-[14px] border border-white/15 bg-[#0b1229] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-[#74b6ff]/50 focus:outline-none"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-white/50">Comments are flat and attach directly to this review.</p>
+              <button
+                type="submit"
+                disabled={!commentBody.trim()}
+                className="rounded-[12px] border border-[#74b6ff]/30 bg-[#162845] px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-[#d5ebff] transition hover:bg-[#1d3457] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Publish
+              </button>
+            </div>
+          </form>
+
+          {commentPayload && (
+            <div className="mt-5 rounded-[14px] border border-[#74b6ff]/20 bg-[#0b1229] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.28em] text-[#9fc3ff]">Generated comment JSON</p>
+              <pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed text-white/75">
+                {JSON.stringify(commentPayload, null, 2)}
+              </pre>
+            </div>
+          )}
+        </section>
       </>
     );
   };

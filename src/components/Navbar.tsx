@@ -1,7 +1,81 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { searchReviews } from "@/api/reviews";
+import { useWallet, type WalletType } from "@/context/WalletContext";
 import type { ReviewListItem } from "@/types/review";
+
+const truncateAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+const walletOptions: Array<{ type: WalletType; label: string; description: string }> = [
+  { type: "metamask", label: "MetaMask", description: "Ethereum wallet" },
+  { type: "wander", label: "Wander", description: "Arweave wallet" }
+];
+
+const ConnectWalletButton = ({ compact = false }: { compact?: boolean }) => {
+  const { address, error, clearError, connect, disconnect, isConnected, walletType } = useWallet();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [connecting, setConnecting] = useState<WalletType | null>(null);
+
+  const handleConnect = async (type: WalletType) => {
+    setConnecting(type);
+    try {
+      await connect(type);
+      setPickerOpen(false);
+    } finally {
+      setConnecting(null);
+    }
+  };
+
+  if (isConnected && address) {
+    return (
+      <button
+        type="button"
+        onClick={() => void disconnect()}
+        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-[#74b6ff]/30 bg-[#162845] font-semibold tracking-[0.12em] text-[#d5ebff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:bg-[#1d3457]`}
+        title={`Disconnect ${walletType ?? "wallet"}`}
+      >
+        {truncateAddress(address)}
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          clearError();
+          setPickerOpen((open) => !open);
+        }}
+        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-white/15 bg-white/6 font-semibold tracking-[0.12em] text-[#d5ebff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-white/10`}
+      >
+        Connect Wallet
+      </button>
+
+      {pickerOpen && (
+        <div className={`${compact ? "right-0 mt-2 w-full" : "right-0 mt-3 w-64"} absolute z-[70] rounded-[16px] border border-white/15 bg-[#10192c]/98 p-3 text-left shadow-[0_20px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl`}>
+          <div className="space-y-2">
+            {walletOptions.map((option) => (
+              <button
+                key={option.type}
+                type="button"
+                disabled={connecting !== null}
+                onClick={() => void handleConnect(option.type)}
+                className="w-full rounded-[12px] border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-[#74b6ff]/35 hover:bg-white/[0.08] disabled:cursor-wait disabled:opacity-70"
+              >
+                <span className="block text-sm font-semibold text-white">
+                  {connecting === option.type ? "Connecting..." : option.label}
+                </span>
+                <span className="mt-1 block text-xs text-white/55">{option.description}</span>
+              </button>
+            ))}
+          </div>
+          {error && <p className="mt-3 rounded-[10px] bg-amber-500/10 px-3 py-2 text-xs text-amber-100">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -129,9 +203,9 @@ const Navbar = () => {
         </div>
 
         <div className="ml-auto flex items-center gap-3 lg:col-start-3 lg:ml-0 lg:justify-self-end">
-          <button className="hidden rounded-[14px] border border-white/15 bg-white/6 px-5 py-2.5 text-sm font-semibold tracking-[0.12em] text-[#d5ebff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-white/10 lg:block">
-            Connect Wallet
-          </button>
+          <div className="hidden lg:block">
+            <ConnectWalletButton />
+          </div>
 
           <button
             className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-white/15 bg-white/6 text-white/80 transition hover:bg-white/10 lg:hidden"
@@ -149,9 +223,7 @@ const Navbar = () => {
         {mobileOpen && (
           <div className="absolute right-4 top-[100%] mt-2 w-52 rounded-[16px] border border-white/15 bg-[#10192c]/95 p-3 text-sm uppercase tracking-wide text-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.45)] lg:hidden">
             <nav className="flex flex-col gap-2">
-              <button className="mt-2 w-full rounded-[12px] border border-white/15 bg-white/6 px-5 py-3 text-base font-semibold tracking-[0.14em] text-[#d5ebff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                Connect Wallet
-              </button>
+              <ConnectWalletButton compact />
             </nav>
           </div>
         )}
