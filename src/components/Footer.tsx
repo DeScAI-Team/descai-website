@@ -4,8 +4,8 @@ type FooterProps = {
 
 const Footer = ({ className = "" }: FooterProps) => {
   return (
-    <div className={`w-full rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_26px_rgba(60,83,127,0.22)] ${className}`}>
-      <footer className="rounded-[16px] border border-white/15 bg-[#141c3d]/95 px-8 py-5 text-sm text-white/80 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+    <div className={`w-full rounded-[20px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)] ${className}`}>
+      <footer className="rounded-[19px] border border-[#263f72] bg-[#071126]/92 px-8 py-5 text-sm text-white/80 shadow-[inset_0_1px_0_rgba(80,126,205,0.16)] backdrop-blur-xl">
         <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
           <span className="font-semibold text-white">DeScAI</span>
           <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.18em] text-white/70">
@@ -20,9 +20,9 @@ const Footer = ({ className = "" }: FooterProps) => {
                 Zurabi Kochiashvili
               </a>
             </span>
-            <span className="hidden h-3 w-px bg-white/20 md:block" aria-hidden />
+            <span className="hidden h-3 w-px bg-[#20315e] md:block" aria-hidden />
             <span>Stony Brook University</span>
-            <span className="hidden h-3 w-px bg-white/20 md:block" aria-hidden />
+            <span className="hidden h-3 w-px bg-[#20315e] md:block" aria-hidden />
             <span>Blockchain Business Lab</span>
           </div>
           <div className="flex items-center gap-2">
@@ -30,7 +30,7 @@ const Footer = ({ className = "" }: FooterProps) => {
               href="https://github.com/DeScAI-Team"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white hover:bg-white/10"
+              className="flex items-center gap-2 rounded-full border border-[#263f72] bg-[#0b1835]/70 px-3 py-2 text-white hover:bg-[#14214a]/72"
               aria-label="Visit DeScAI on GitHub"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6 fill-current">
@@ -41,7 +41,7 @@ const Footer = ({ className = "" }: FooterProps) => {
               href="https://x.com/DeScAiTeam"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white hover:bg-white/10"
+              className="flex items-center gap-2 rounded-full border border-[#263f72] bg-[#0b1835]/70 px-3 py-2 text-white hover:bg-[#14214a]/72"
               aria-label="Visit DeScAI on X"
             >
               <img src="/x-logo.svg" alt="X" className="h-6 w-6" />

@@ -34,14 +34,14 @@ const TokenPanel = () => {
     : "—";
 
   return (
-    <article className="rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_26px_rgba(60,83,127,0.22)]">
-      <div className="rounded-[16px] border border-white/15 bg-[#141c3d]/95 px-6 py-7">
+    <article className="rounded-[24px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)]">
+      <div className="rounded-[23px] border border-[#263f72] bg-[#071126]/92 px-6 py-7 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
         <header className="flex flex-wrap items-center justify-between gap-3 text-white">
           <h4 className="neon-heading neon-heading-left text-left text-lg">Project Tokens</h4>
           <div className="flex items-center gap-2 text-sm text-white/70">
             <button
               type="button"
-              className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.16em] hover:bg-white/15"
+              className="rounded-full border border-[#263f72] bg-[#14214a]/72 px-3 py-1 text-xs uppercase tracking-[0.16em] hover:bg-[#1a2d5d]"
               onClick={() => void refreshNow()}
               disabled={refreshing}
             >
@@ -49,7 +49,7 @@ const TokenPanel = () => {
             </button>
             <Link
               to="/tokens"
-              className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.16em] hover:bg-white/15"
+              className="rounded-full border border-[#263f72] bg-[#14214a]/72 px-3 py-1 text-xs uppercase tracking-[0.16em] hover:bg-[#1a2d5d]"
             >
               View All
             </Link>

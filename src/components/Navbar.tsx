@@ -31,7 +31,7 @@ const ConnectWalletButton = ({ compact = false }: { compact?: boolean }) => {
       <button
         type="button"
         onClick={() => void disconnect()}
-        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-[#74b6ff]/30 bg-[#162845] font-semibold tracking-[0.12em] text-[#d5ebff] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:bg-[#1d3457]`}
+        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-[#74b6ff]/30 bg-[#162845] font-semibold text-[#d5ebff] shadow-[inset_0_1px_0_rgba(80,126,205,0.14)] transition hover:bg-[#1d3457]`}
         title={`Disconnect ${walletType ?? "wallet"}`}
       >
         {truncateAddress(address)}
@@ -47,13 +47,13 @@ const ConnectWalletButton = ({ compact = false }: { compact?: boolean }) => {
           clearError();
           setPickerOpen((open) => !open);
         }}
-        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-white/15 bg-white/6 font-semibold tracking-[0.12em] text-[#d5ebff] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-white/10`}
+        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-[#78c6ff]/25 bg-gradient-to-br from-[#4c91ff] to-[#7f35df] font-semibold text-white shadow-[0_12px_30px_rgba(66,119,255,0.28),inset_0_1px_0_rgba(180,215,255,0.18)] transition hover:brightness-110`}
       >
         Connect Wallet
       </button>
 
       {pickerOpen && (
-        <div className={`${compact ? "right-0 mt-2 w-full" : "right-0 mt-3 w-64"} absolute z-[70] rounded-[16px] border border-white/15 bg-[#10192c]/98 p-3 text-left shadow-[0_20px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl`}>
+        <div className={`${compact ? "right-0 mt-2 w-full" : "right-0 mt-3 w-64"} absolute z-[70] rounded-[16px] border border-[#263f72] bg-[#10192c]/98 p-3 text-left shadow-[0_20px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl`}>
           <div className="space-y-2">
             {walletOptions.map((option) => (
               <button
@@ -61,7 +61,7 @@ const ConnectWalletButton = ({ compact = false }: { compact?: boolean }) => {
                 type="button"
                 disabled={connecting !== null}
                 onClick={() => void handleConnect(option.type)}
-                className="w-full rounded-[12px] border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-[#74b6ff]/35 hover:bg-white/[0.08] disabled:cursor-wait disabled:opacity-70"
+                className="w-full rounded-[12px] border border-[#263f72] bg-[#0b1835]/70 px-3 py-3 text-left transition hover:border-[#74b6ff]/35 hover:bg-[#13244c] disabled:cursor-wait disabled:opacity-70"
               >
                 <span className="block text-sm font-semibold text-white">
                   {connecting === option.type ? "Connecting..." : option.label}
@@ -114,23 +114,23 @@ const Navbar = () => {
   }, [query]);
 
   return (
-    <div className="relative z-50 w-full rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_26px_rgba(60,83,127,0.22)]">
-      <header className="rounded-[16px] border border-white/15 bg-[#141c3d]/95 px-5 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl lg:px-6">
+    <div className="relative z-50 w-full rounded-[22px] border border-[#35538a]/60 bg-[linear-gradient(135deg,rgba(38,54,106,0.96),rgba(8,13,31,0.96)_45%,rgba(10,15,31,0.98))] p-[1px] shadow-[0_18px_56px_rgba(1,4,18,0.72),0_0_34px_rgba(86,135,255,0.14)]">
+      <header className="rounded-[21px] border border-[#263f72] bg-[#070d20]/84 px-5 py-4 shadow-[inset_0_1px_0_rgba(80,126,205,0.14)] backdrop-blur-xl lg:px-6">
         <div className="relative z-50 flex items-center gap-3 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_220px] lg:items-center lg:gap-5">
           <Link to="/" className="flex items-center gap-2 lg:justify-self-start">
             <img
               src="/DeScAI%20logo.jpg"
               alt="DeScAI logo"
-              className="h-14 w-14 rounded-[14px] border border-white/10 bg-white/5 object-cover shadow-[0_8px_20px_rgba(0,0,0,0.22)] lg:h-16 lg:w-16"
+              className="h-14 w-14 rounded-[16px] border border-[#59d7ff]/30 bg-[#0f2a3d] object-cover shadow-[0_0_24px_rgba(65,194,255,0.22)] lg:h-16 lg:w-16"
             />
           </Link>
 
         <div className="relative min-w-0 flex-1 lg:col-start-2 lg:w-full">
           <div className="mx-auto w-full max-w-[860px]">
-          <label className="flex min-h-[48px] w-full items-center gap-3 rounded-[14px] border border-white/15 bg-[rgba(9,16,35,0.72)] px-4 py-2.5 text-sm text-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <label className="flex min-h-[48px] w-full items-center gap-3 rounded-[14px] border border-[#263b68] bg-[rgba(8,14,34,0.78)] px-4 py-2.5 text-sm text-white/70 shadow-[inset_0_1px_0_rgba(80,126,205,0.12),0_0_24px_rgba(70,113,190,0.1)]">
             <input
-              className="w-full bg-transparent text-white placeholder:text-white/40 focus:outline-none"
-              placeholder="Search reviews..."
+              className="w-full bg-transparent text-white placeholder:text-white/38 focus:outline-none"
+              placeholder="Search reviews, platforms, research..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -153,7 +153,7 @@ const Navbar = () => {
                   navigate(`/search?q=${encodeURIComponent(next)}`);
                 }
               }}
-              className="grid h-9 w-9 place-items-center rounded-[11px] border border-[#74b6ff]/25 bg-gradient-to-br from-[#20375a] to-[#162845] text-[#d5ebff] shadow-[0_6px_18px_rgba(0,0,0,0.22)] transition hover:from-[#28446c] hover:to-[#1a3152]"
+              className="grid h-9 w-9 place-items-center rounded-[11px] text-[#9fc3ff] transition hover:bg-[#0b1835]/70"
               aria-label="Search"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
@@ -163,7 +163,7 @@ const Navbar = () => {
           </label>
           </div>
           {(results.length > 0 || loading || error) && (
-            <div className="absolute left-0 right-0 z-50 mx-auto mt-2 w-full max-w-[860px] rounded-[16px] border border-white/15 bg-[#10192c]/95 p-3 text-sm shadow-[0_20px_44px_rgba(0,0,0,0.48)] backdrop-blur-xl">
+            <div className="absolute left-0 right-0 z-50 mx-auto mt-2 w-full max-w-[860px] rounded-[16px] border border-[#263f72] bg-[#10192c]/95 p-3 text-sm shadow-[0_20px_44px_rgba(0,0,0,0.48)] backdrop-blur-xl">
               {loading && <p className="text-white/70">Searching…</p>}
               {error && <p className="text-amber-200">{error}</p>}
               {!loading && !error && results.length === 0 && (
@@ -175,7 +175,7 @@ const Navbar = () => {
                     <li key={item.id}>
                       <Link
                         to={`/review/${item.id}`}
-                        className="block rounded-[10px] px-3 py-2 hover:bg-white/5 text-white"
+                        className="block rounded-[10px] px-3 py-2 hover:bg-[#0b1835]/70 text-white"
                         onClick={() => setResults([])}
                       >
                         <p className="font-semibold leading-tight">
@@ -188,7 +188,7 @@ const Navbar = () => {
                 </ul>
               )}
               {!loading && !error && query.trim().length >= 2 && (
-                <div className="mt-3 border-t border-white/10 pt-2 text-right">
+                <div className="mt-3 border-t border-[#263f72] pt-2 text-right">
                   <Link
                     to={`/search?q=${encodeURIComponent(query.trim())}`}
                     className="text-xs font-semibold text-[#9fc3ff] hover:text-white"
@@ -208,7 +208,7 @@ const Navbar = () => {
           </div>
 
           <button
-            className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-white/15 bg-white/6 text-white/80 transition hover:bg-white/10 lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#263f72] bg-[#0b1835]/70 text-white/80 transition hover:bg-[#14214a]/72 lg:hidden"
             aria-label="Toggle menu"
             onClick={() => setMobileOpen((open) => !open)}
           >
@@ -221,7 +221,7 @@ const Navbar = () => {
         </div>
 
         {mobileOpen && (
-          <div className="absolute right-4 top-[100%] mt-2 w-52 rounded-[16px] border border-white/15 bg-[#10192c]/95 p-3 text-sm uppercase tracking-wide text-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.45)] lg:hidden">
+          <div className="absolute right-4 top-[100%] mt-2 w-52 rounded-[16px] border border-[#263f72] bg-[#10192c]/95 p-3 text-sm uppercase tracking-wide text-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.45)] lg:hidden">
             <nav className="flex flex-col gap-2">
               <ConnectWalletButton compact />
             </nav>

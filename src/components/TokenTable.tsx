@@ -96,7 +96,7 @@ const SortButton = ({
 
 const TokenTable = ({ tokens, sort, onSortChange, compact = false, showPlatform = true, emptyMessage }: TokenTableProps) => {
   if (!tokens.length) {
-    return <p className="rounded-[12px] border border-white/15 bg-white/10 p-4 text-sm text-white/75">{emptyMessage ?? "No tokens available."}</p>;
+    return <p className="rounded-[12px] border border-[#263f72] bg-[#14214a]/72 p-4 text-sm text-white/75">{emptyMessage ?? "No tokens available."}</p>;
   }
 
   return (
@@ -125,7 +125,7 @@ const TokenTable = ({ tokens, sort, onSortChange, compact = false, showPlatform 
             <article
               key={token.id}
               className={clsx(
-                "grid items-center gap-x-4 rounded-[12px] bg-gradient-to-r from-[#232b56]/92 to-[#171d3e]/88 px-4 py-3 text-left shadow-[inset_0_0_12px_rgba(255,255,255,0.06)]",
+                "grid items-center gap-x-4 rounded-[12px] bg-gradient-to-r from-[#232b56]/92 to-[#171d3e]/88 px-4 py-3 text-left shadow-[inset_0_0_12px_rgba(80,126,205,0.12)]",
                 compact ? COMPACT_GRID_CLASS : FULL_GRID_CLASS,
                 showPlatform && !compact && FULL_WITH_PLATFORM_GRID_CLASS
               )}
@@ -136,12 +136,12 @@ const TokenTable = ({ tokens, sort, onSortChange, compact = false, showPlatform 
               </div>
 
               {showPlatform && !compact && (
-                <span className="rounded-full bg-white/10 px-2 py-1 text-center text-[0.62rem] uppercase tracking-[0.12em] text-white/75">
+                <span className="rounded-full bg-[#14214a]/72 px-2 py-1 text-center text-[0.62rem] uppercase tracking-[0.12em] text-white/75">
                   {token.platform}
                 </span>
               )}
 
-              <span className="rounded-full bg-white/10 px-2 py-1 text-center text-[0.62rem] uppercase tracking-[0.12em] text-white/75">
+              <span className="rounded-full bg-[#14214a]/72 px-2 py-1 text-center text-[0.62rem] uppercase tracking-[0.12em] text-white/75">
                 {formatChainLabel(token.chain)}
               </span>
               <span className="whitespace-nowrap text-right font-mono tabular-nums text-white">{formatPrice(token.market?.price)}</span>

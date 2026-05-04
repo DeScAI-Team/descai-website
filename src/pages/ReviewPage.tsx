@@ -41,9 +41,19 @@ type CommentPayload = {
   replyTo: string;
 };
 
+type CommentItem = CommentPayload & {
+  id: string;
+  author: string;
+  createdAt: string;
+  status?: "published" | "pending";
+};
+
 const mockExistingComment = {
+  id: "existing-comment-1",
   author: "0x82f1...4c91",
-  body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. This review raises useful points for future reproducibility work."
+  body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. This review raises useful points for future reproducibility work.",
+  createdAt: "Earlier",
+  status: "published" as const
 };
 
 // #comments Build the exact JSON shape the future Arweave publishing flow will consume.
@@ -51,6 +61,22 @@ const createCommentPayload = (body: string, replyTo: string): CommentPayload => 
   body,
   replyTo
 });
+
+const formatCommentTime = (dateString: string) => {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+};
+
+const getCommentInitials = (author: string) => {
+  const cleaned = author.replace(/^0x/i, "");
+  return cleaned.slice(0, 2).toUpperCase() || "DC";
+};
 
 /**Convert underscores to spaces for readability*/
 const humanizeKey = (key: string): string =>
@@ -79,7 +105,7 @@ const SectionBlock = ({ title, icon, content }: { title: string; icon: string; c
   };
 
   return (
-    <section className="rounded-2xl border border-white/15 bg-[#1a2247] px-6 py-5 shadow-inner shadow-white/10">
+    <section className="rounded-2xl border border-[#263f72] bg-[#101b3c]/92 px-6 py-5 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
       <header className="flex items-center gap-3">
         <span className="text-lg">{icon}</span>
         <h3 className="text-lg font-semibold text-white">{title}</h3>
@@ -108,7 +134,7 @@ const ScoreChip = ({ label, score, color }: { label: string; score: number | nul
         style={{
           background:
             `radial-gradient(circle at center, #1a2247 63%, transparent 64%), ` +
-            `conic-gradient(${color} ${angle}deg, rgba(255,255,255,0.12) 0)`
+            `conic-gradient(${color} ${angle}deg, rgba(80,126,205,0.18) 0)`
         }}
       >
         <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-lg font-semibold text-white">
@@ -127,7 +153,7 @@ const ReviewPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState("");
-  const [commentPayload, setCommentPayload] = useState<CommentPayload | null>(null);
+  const [comments, setComments] = useState<CommentItem[]>([mockExistingComment]);
 
   useEffect(() => {
     if (!id) return;
@@ -176,7 +202,7 @@ const ReviewPage = () => {
     return null;
   }, [review]);
 
-  // #comments Publish currently returns JSON only; Arweave persistence can call this payload later.
+  // #comments Store the future Arweave payload internally, but render it as a normal discussion item.
   const handlePublishComment = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!review) return;
@@ -185,14 +211,23 @@ const ReviewPage = () => {
     if (!body) return;
 
     const payload = createCommentPayload(body, review.title || review.paper_id || review.id);
-    setCommentPayload(payload);
+    setComments((current) => [
+      ...current,
+      {
+        ...payload,
+        id: `local-comment-${Date.now()}`,
+        author: "You",
+        createdAt: new Date().toISOString(),
+        status: "pending"
+      }
+    ]);
     setCommentBody("");
   };
 
   const renderBody = () => {
     const wrap = (content: React.ReactNode) => (
-      <section className="rounded-[36px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[5px] shadow-[0_0_30px_rgba(60,83,127,0.24)]">
-        <div className="relative overflow-hidden rounded-[32px] border border-white/15 bg-[#151d3de8] px-8 py-10 text-white shadow-[0_25px_60px_rgba(1,0,22,0.75)]">
+      <section className="rounded-[28px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)]">
+        <div className="relative overflow-hidden rounded-[27px] border border-[#263f72] bg-[#071126]/92 px-8 py-10 text-white shadow-[inset_0_1px_0_rgba(80,126,205,0.16)]">
           <div className="absolute inset-0 -z-10 opacity-50">
             <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#2b5176]" />
             <div className="neon-blur left-1/4 top-1/2 bg-[#59b8ff]" />
@@ -206,19 +241,19 @@ const ReviewPage = () => {
       return wrap(
         <div className="animate-pulse space-y-6 text-white/70">
           <div className="flex items-center justify-between">
-            <div className="h-10 w-24 rounded-full bg-white/10" />
-            <div className="h-14 w-40 rounded-lg bg-white/10" />
+            <div className="h-10 w-24 rounded-full bg-[#14214a]/72" />
+            <div className="h-14 w-40 rounded-lg bg-[#14214a]/72" />
           </div>
-          <div className="h-8 w-3/4 rounded-lg bg-white/10" />
-          <div className="h-4 w-1/3 rounded-lg bg-white/10" />
+          <div className="h-8 w-3/4 rounded-lg bg-[#14214a]/72" />
+          <div className="h-4 w-1/3 rounded-lg bg-[#14214a]/72" />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             {[...Array(6)].map((_, idx) => (
-              <div key={idx} className="h-28 rounded-2xl bg-white/10" />
+              <div key={idx} className="h-28 rounded-2xl bg-[#14214a]/72" />
             ))}
           </div>
           <div className="space-y-3">
-            <div className="h-5 w-40 rounded bg-white/10" />
-            <div className="h-24 rounded-2xl bg-white/10" />
+            <div className="h-5 w-40 rounded bg-[#14214a]/72" />
+            <div className="h-24 rounded-2xl bg-[#14214a]/72" />
           </div>
         </div>
       );
@@ -230,7 +265,7 @@ const ReviewPage = () => {
           <p className="text-lg font-semibold">Failed to load review</p>
           <p className="mt-2 text-white/80">{error}</p>
           <button
-            className="mt-4 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/15"
+            className="mt-4 rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#263f72] hover:bg-[#1a2d5d]"
             onClick={() => navigate("/")}
           >
             ← Back home
@@ -244,7 +279,7 @@ const ReviewPage = () => {
         <div className="text-center text-white/80">
           <p className="text-lg font-semibold">No review found</p>
           <button
-            className="mt-4 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/15"
+            className="mt-4 rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#263f72] hover:bg-[#1a2d5d]"
             onClick={() => navigate("/")}
           >
             ← Back home
@@ -258,7 +293,7 @@ const ReviewPage = () => {
         <header className="flex flex-wrap items-start gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/15"
+            className="rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#263f72] hover:bg-[#1a2d5d]"
           >
             ← Back
           </button>
@@ -290,7 +325,7 @@ const ReviewPage = () => {
         </a>
 
         {narrative && (
-          <div className="mt-6 rounded-2xl border border-white/15 bg-[#1a2247] px-6 py-5 text-base leading-relaxed text-white/85 shadow-inner shadow-white/10">
+          <div className="mt-6 rounded-2xl border border-[#263f72] bg-[#101b3c]/92 px-6 py-5 text-base leading-relaxed text-white/85 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
             {narrative}
           </div>
         )}
@@ -328,20 +363,31 @@ const ReviewPage = () => {
         </div>
 
         {/* #comments Flat, non-nested comment section for each review. */}
-        <section id="comments" className="mt-12 scroll-mt-8 rounded-2xl border border-white/15 bg-[#111936] px-6 py-6 shadow-inner shadow-white/10">
+        <section id="comments" className="mt-12 scroll-mt-8 rounded-2xl border border-[#263f72] bg-[#08142f]/92 px-6 py-6 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
           <header>
             <p className="text-xs uppercase tracking-[0.35em] text-white/55">Comments</p>
             <h2 className="mt-2 text-2xl font-semibold text-white">Discussion</h2>
           </header>
 
-          <div className="mt-5 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-white">{mockExistingComment.author}</p>
-              <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-white/45">
-                Existing
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-white/75">{mockExistingComment.body}</p>
+          <div className="mt-5 space-y-3">
+            {comments.map((comment) => (
+              <article key={comment.id} className="rounded-[16px] border border-[#263f72] bg-[#0b1835]/70 px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#365589] bg-[#14214a]/80 text-xs font-semibold text-[#b7c9ff]">
+                    {getCommentInitials(comment.author)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <p className="font-semibold text-white">{comment.author}</p>
+                      <span className="text-xs text-white/45">
+                        {comment.status === "pending" ? "Just now" : formatCommentTime(comment.createdAt)}
+                      </span>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/78">{comment.body}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
 
           <form className="mt-5 space-y-3" onSubmit={handlePublishComment}>
@@ -353,10 +399,10 @@ const ReviewPage = () => {
               value={commentBody}
               onChange={(event) => setCommentBody(event.target.value)}
               placeholder="Write a comment..."
-              className="min-h-32 w-full resize-y rounded-[14px] border border-white/15 bg-[#0b1229] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-[#74b6ff]/50 focus:outline-none"
+              className="min-h-32 w-full resize-y rounded-[14px] border border-[#263f72] bg-[#0b1229] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-[#74b6ff]/50 focus:outline-none"
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-white/50">Comments are flat and attach directly to this review.</p>
+              <p className="text-xs text-white/50">Your comment appears in the discussion immediately.</p>
               <button
                 type="submit"
                 disabled={!commentBody.trim()}
@@ -366,15 +412,6 @@ const ReviewPage = () => {
               </button>
             </div>
           </form>
-
-          {commentPayload && (
-            <div className="mt-5 rounded-[14px] border border-[#74b6ff]/20 bg-[#0b1229] px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.28em] text-[#9fc3ff]">Generated comment JSON</p>
-              <pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed text-white/75">
-                {JSON.stringify(commentPayload, null, 2)}
-              </pre>
-            </div>
-          )}
         </section>
       </>
     );

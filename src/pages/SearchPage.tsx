@@ -56,7 +56,7 @@ const SearchPage = () => {
           <div className="flex items-center justify-between">
             <Link
               to="/"
-              className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/15"
+              className="rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#263f72] hover:bg-[#1a2d5d]"
             >
               ← Back
             </Link>
@@ -67,14 +67,14 @@ const SearchPage = () => {
           </div>
             <form onSubmit={onSubmit} className="flex flex-wrap items-center justify-center gap-3">
               <input
-                className="w-full max-w-xl rounded-[14px] border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#9fc3ff]"
+                className="w-full max-w-xl rounded-[14px] border border-[#263f72] bg-[#0b1835]/70 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#9fc3ff]"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search reviews by title or paper ID..."
               />
               <button
                 type="submit"
-                className="rounded-[12px] border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-white/15"
+                className="rounded-[12px] border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold uppercase tracking-[0.2em] text-white hover:bg-[#1a2d5d]"
               >
                 Search
               </button>
@@ -82,8 +82,8 @@ const SearchPage = () => {
             <p className="text-xs text-white/60">Showing results for “{trimmed || "…" }”</p>
           </header>
 
-          <section className="rounded-[20px] bg-gradient-to-br from-[#3c537f] via-[#273960] to-[#16213c] p-[4px] shadow-[0_0_26px_rgba(60,83,127,0.22)]">
-            <div className="rounded-[16px] border border-white/15 bg-[#141c3d]/92 p-6 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+          <section className="rounded-[24px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)]">
+            <div className="rounded-[23px] border border-[#263f72] bg-[#071126]/92 p-6 shadow-[inset_0_1px_0_rgba(80,126,205,0.16)] backdrop-blur">
             {loading && <p className="text-white/70">Searching…</p>}
             {error && <p className="text-amber-200">{error}</p>}
             {!loading && !error && results.length === 0 && (
@@ -94,7 +94,7 @@ const SearchPage = () => {
                 {results.map((item) => (
                   <li
                     key={item.id}
-                    className="rounded-[12px] border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10"
+                    className="rounded-[12px] border border-[#263f72] bg-[#0b1835]/70 px-4 py-3 hover:bg-[#14214a]/72"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link to={`/review/${item.id}`} className="block flex-1">
@@ -108,7 +108,7 @@ const SearchPage = () => {
                       </Link>
                       <Link
                         to={`/review/${item.id}`}
-                        className="shrink-0 rounded-[10px] border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-white/15"
+                        className="shrink-0 rounded-[10px] border border-[#263f72] bg-[#14214a]/72 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white hover:bg-[#1a2d5d]"
                       >
                         View
                       </Link>
