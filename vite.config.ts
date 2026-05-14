@@ -19,7 +19,12 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        "@": "/src"
+        "@": "/src",
+        "@dha-team/arbundles": "@dha-team/arbundles/web",
+        crypto: "crypto-browserify",
+        "node:crypto": "crypto-browserify",
+        stream: "stream-browserify",
+        "node:stream": "stream-browserify"
       }
     },
     server: {

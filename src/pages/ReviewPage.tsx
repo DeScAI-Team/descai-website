@@ -4,6 +4,9 @@ import { fetchReviewFromArweave } from "@/api/reviews";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import type { Review, ReviewSection } from "@/types/review";
+import { fetchComments, publishComment, WANDER_COMMENT_CONNECT_MESSAGE } from "@/api/comments";
+import type { ArweaveComment } from "@/api/comments";
+import { useWallet } from "@/context/WalletContext";
 
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return "Unknown date";
@@ -36,35 +39,9 @@ const SCORE_COLORS = [
 
 const SECTION_ICONS = ["💡", "📝", "🔬", "📊", "⚖️", "🏛️", "🤝", "🔗", "🧬", "📈"];
 
-type CommentPayload = {
-  body: string;
-  replyTo: string;
-};
-
-type CommentItem = CommentPayload & {
-  id: string;
-  author: string;
-  createdAt: string;
-  status?: "published" | "pending";
-};
-
-const mockExistingComment = {
-  id: "existing-comment-1",
-  author: "0x82f1...4c91",
-  body: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. This review raises useful points for future reproducibility work.",
-  createdAt: "Earlier",
-  status: "published" as const
-};
-
-// #comments Build the exact JSON shape the future Arweave publishing flow will consume.
-const createCommentPayload = (body: string, replyTo: string): CommentPayload => ({
-  body,
-  replyTo
-});
-
-const formatCommentTime = (dateString: string) => {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
+const formatCommentTime = (timestamp: number) => {
+  const date = new Date(timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
   return date.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -73,9 +50,19 @@ const formatCommentTime = (dateString: string) => {
   });
 };
 
-const getCommentInitials = (author: string) => {
-  const cleaned = author.replace(/^0x/i, "");
+const getCommentInitials = (owner?: string) => {
+  const cleaned = owner?.replace(/^0x/i, "") ?? "";
   return cleaned.slice(0, 2).toUpperCase() || "DC";
+};
+
+const getCommentAuthorLabel = (owner?: string) => owner ? formatCompactId(owner) : "Unknown wallet";
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
+type CommentPublishMessage = {
+  type: "success" | "error";
+  text: string;
 };
 
 /**Convert underscores to spaces for readability*/
@@ -149,11 +136,16 @@ const ScoreChip = ({ label, score, color }: { label: string; score: number | nul
 const ReviewPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { address, isConnected, walletType } = useWallet();
   const [review, setReview] = useState<Review | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [commentBody, setCommentBody] = useState("");
-  const [comments, setComments] = useState<CommentItem[]>([mockExistingComment]);
+  const [comments, setComments] = useState<ArweaveComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [commentPublishMessage, setCommentPublishMessage] = useState<CommentPublishMessage | null>(null);
+  const [publishingComment, setPublishingComment] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -166,13 +158,37 @@ const ReviewPage = () => {
         const fetched = await fetchReviewFromArweave(id);
         if (!cancelled) setReview(fetched);
       } catch (err) {
-        if (!cancelled) setError((err as Error).message || "Failed to load review");
+        if (!cancelled) setError(getErrorMessage(err, "Failed to load review"));
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
     load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    const loadComments = async () => {
+      setComments([]);
+      setCommentsLoading(true);
+      setCommentError(null);
+      try {
+        const fetchedComments = await fetchComments(id);
+        if (!cancelled) setComments(fetchedComments);
+      } catch (err) {
+        if (!cancelled) setCommentError(getErrorMessage(err, "Failed to load comments"));
+      } finally {
+        if (!cancelled) setCommentsLoading(false);
+      }
+    };
+
+    loadComments();
     return () => {
       cancelled = true;
     };
@@ -202,26 +218,33 @@ const ReviewPage = () => {
     return null;
   }, [review]);
 
-  // #comments Store the future Arweave payload internally, but render it as a normal discussion item.
-  const handlePublishComment = (event: React.FormEvent<HTMLFormElement>) => {
+  const handlePublishComment = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!review) return;
+    if (!review || publishingComment) return;
 
     const body = commentBody.trim();
     if (!body) return;
 
-    const payload = createCommentPayload(body, review.title || review.paper_id || review.id);
-    setComments((current) => [
-      ...current,
-      {
-        ...payload,
-        id: `local-comment-${Date.now()}`,
-        author: "You",
-        createdAt: new Date().toISOString(),
-        status: "pending"
-      }
-    ]);
-    setCommentBody("");
+    if (!isConnected || walletType !== "wander" || !window.arweaveWallet) {
+      setCommentPublishMessage({ type: "error", text: WANDER_COMMENT_CONNECT_MESSAGE });
+      return;
+    }
+
+    const rootTx = review.txid ?? review.id;
+
+    setPublishingComment(true);
+    setCommentError(null);
+    setCommentPublishMessage(null);
+
+    try {
+      await publishComment(rootTx, body, { wallet: window.arweaveWallet, owner: address });
+      setCommentBody("");
+      setCommentPublishMessage({ type: "success", text: "Success! Comments may take up to an hour to display." });
+    } catch (err) {
+      setCommentPublishMessage({ type: "error", text: getErrorMessage(err, "Failed to publish comment") });
+    } finally {
+      setPublishingComment(false);
+    }
   };
 
   const renderBody = () => {
@@ -370,45 +393,88 @@ const ReviewPage = () => {
           </header>
 
           <div className="mt-5 space-y-3">
-            {comments.map((comment) => (
-              <article key={comment.id} className="rounded-[16px] border border-[#263f72] bg-[#0b1835]/70 px-4 py-4">
+            {commentsLoading && (
+              <p className="rounded-[16px] border border-[#263f72] bg-[#0b1835]/70 px-4 py-4 text-sm text-white/60">
+                Loading comments...
+              </p>
+            )}
+
+            {!commentsLoading && comments.length === 0 && (
+              <p className="rounded-[16px] border border-[#263f72] bg-[#0b1835]/70 px-4 py-4 text-sm text-white/60">
+                No comments yet.
+              </p>
+            )}
+
+            {comments.map((comment, index) => (
+              <article
+                key={comment.txid ?? `${comment.rootTx}-${comment.timestamp}-${index}`}
+                className="rounded-[16px] border border-[#263f72] bg-[#0b1835]/70 px-4 py-4"
+              >
                 <div className="flex items-start gap-3">
                   <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#365589] bg-[#14214a]/80 text-xs font-semibold text-[#b7c9ff]">
-                    {getCommentInitials(comment.author)}
+                    {getCommentInitials(comment.owner)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <p className="font-semibold text-white">{comment.author}</p>
-                      <span className="text-xs text-white/45">
-                        {comment.status === "pending" ? "Just now" : formatCommentTime(comment.createdAt)}
-                      </span>
+                      <p className="font-semibold text-white">{getCommentAuthorLabel(comment.owner)}</p>
+                      <span className="text-xs text-white/45">{formatCommentTime(comment.timestamp)}</span>
+                      {comment.txid && (
+                        <span className="text-xs text-white/35">TX {formatCompactId(comment.txid)}</span>
+                      )}
                     </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/78">{comment.body}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/78">{comment.text}</p>
                   </div>
                 </div>
               </article>
             ))}
           </div>
 
+          {commentError && (
+            <p className="mt-4 rounded-[12px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {commentError}
+            </p>
+          )}
+
           <form className="mt-5 space-y-3" onSubmit={handlePublishComment}>
             <label htmlFor="review-comment" className="sr-only">
               Write a comment
             </label>
-            <textarea
-              id="review-comment"
-              value={commentBody}
-              onChange={(event) => setCommentBody(event.target.value)}
-              placeholder="Write a comment..."
-              className="min-h-32 w-full resize-y rounded-[14px] border border-[#263f72] bg-[#0b1229] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-[#74b6ff]/50 focus:outline-none"
-            />
+            {commentPublishMessage ? (
+              <div
+                className={`min-h-32 rounded-[14px] border px-4 py-3 text-sm leading-relaxed ${
+                  commentPublishMessage.type === "success"
+                    ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100"
+                    : "border-red-400/30 bg-red-500/10 text-red-100"
+                }`}
+              >
+                <p>{commentPublishMessage.text}</p>
+                {commentPublishMessage.type === "error" && (
+                  <button
+                    type="button"
+                    onClick={() => setCommentPublishMessage(null)}
+                    className="mt-4 rounded-[10px] border border-white/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/85 transition hover:bg-white/10"
+                  >
+                    Edit comment
+                  </button>
+                )}
+              </div>
+            ) : (
+              <textarea
+                id="review-comment"
+                value={commentBody}
+                onChange={(event) => setCommentBody(event.target.value)}
+                placeholder="Write a comment..."
+                className="min-h-32 w-full resize-y rounded-[14px] border border-[#263f72] bg-[#0b1229] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-[#74b6ff]/50 focus:outline-none"
+              />
+            )}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-white/50">Your comment appears in the discussion immediately.</p>
+              <p className="text-xs text-white/50">Comments are published to Arweave through Turbo.</p>
               <button
                 type="submit"
-                disabled={!commentBody.trim()}
+                disabled={!commentBody.trim() || publishingComment || commentPublishMessage?.type === "success"}
                 className="rounded-[12px] border border-[#74b6ff]/30 bg-[#162845] px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-[#d5ebff] transition hover:bg-[#1d3457] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Publish
+                {publishingComment ? "Publishing..." : "Publish"}
               </button>
             </div>
           </form>

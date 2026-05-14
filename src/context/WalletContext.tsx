@@ -5,6 +5,7 @@ export type WalletType = "metamask" | "wander";
 
 type WalletContextValue = {
   address: string | null;
+  arweaveWallet: Window["arweaveWallet"] | null;
   walletType: WalletType | null;
   isConnected: boolean;
   error: string | null;
@@ -16,7 +17,7 @@ type WalletContextValue = {
 };
 
 const CONNECTED_WALLET_KEY = "connectedWallet";
-const WANDER_PERMISSIONS = ["ACCESS_ADDRESS", "SIGN_TRANSACTION", "SIGNATURE"] as const;
+const WANDER_PERMISSIONS = ["ACCESS_ADDRESS", "SIGN_TRANSACTION"] as const;
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
 
@@ -209,6 +210,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   const value = useMemo<WalletContextValue>(
     () => ({
       address,
+      arweaveWallet: getWanderProvider() ?? null,
       walletType,
       isConnected: Boolean(address),
       error,

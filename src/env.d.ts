@@ -23,10 +23,21 @@ type ArweaveWalletProvider = {
   disconnect: () => Promise<void>;
   getActiveAddress: () => Promise<string>;
   sign: (transaction: unknown) => Promise<unknown>;
+  signDataItem: (dataItem: {
+    data: string | Uint8Array;
+    target?: string;
+    anchor?: string;
+    tags?: Array<{ name: string; value: string }>;
+  }) => Promise<ArrayBuffer | Uint8Array | number[]>;
   signMessage: (message: Uint8Array) => Promise<unknown>;
 };
 
 interface Window {
   ethereum?: EthereumProvider;
   arweaveWallet?: ArweaveWalletProvider;
+}
+
+declare module "process/browser" {
+  import process from "node:process";
+  export default process;
 }
