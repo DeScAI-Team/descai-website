@@ -1,7 +1,8 @@
-import { ArconnectSigner, TurboFactory } from "@ardrive/turbo-sdk/web";
+import { TurboFactory } from "@ardrive/turbo-sdk/web";
 
 
 const APP_NAME = "DeScAi";
+const WANDER_COMMENT_PERMISSIONS = ["ACCESS_ADDRESS", "SIGN_TRANSACTION"] as const;
 // Export so we can use in ReviewPage consistantly
 export const WANDER_COMMENT_CONNECT_MESSAGE = "Please connect Wander to write comments"; 
 export const TURBO_COMMENT_TOO_LONG_MESSAGE = "Comment is too long for Turbo free upload. Please keep it under 100kb.";
@@ -37,6 +38,11 @@ type PublishCommentOptions = {
 };
 
 const getByteLength = (value: string) => new TextEncoder().encode(value).byteLength;
+const toUint8Array = (value: ArrayBuffer | Uint8Array | number[]) => {
+  if (value instanceof Uint8Array) return value;
+  if (Array.isArray(value)) return Uint8Array.from(value);
+  return new Uint8Array(value);
+};
 
 /**
  * Upload a comment to Arweave through Turbo with the connected Wander wallet.
@@ -55,6 +61,8 @@ export const publishComment = async (
       throw new Error(WANDER_COMMENT_CONNECT_MESSAGE);
     }
 
+    await wallet.connect([...WANDER_COMMENT_PERMISSIONS]);
+
     const owner = options.owner ?? await wallet.getActiveAddress().catch(() => null);
     if (!owner) {
       throw new Error(WANDER_COMMENT_CONNECT_MESSAGE);
@@ -67,21 +75,22 @@ export const publishComment = async (
       throw new Error(TURBO_COMMENT_TOO_LONG_MESSAGE);
     }
 
-    const signer = new ArconnectSigner(wallet);
-
-    const turbo = TurboFactory.authenticated({ signer });
-
-    const uploadResult = await turbo.upload({
+    const signedDataItem = toUint8Array(await wallet.signDataItem({
       data,
-      dataItemOpts: {
-        tags: [
-          { name: "Content-Type", value: "application/json" },
-          { name: "App-Name", value: APP_NAME },
-          { name: "Type", value: "comment" },
-          { name: "Root-Tx", value: reviewTxId },
-          { name: "Unix-Time", value: timestamp.toString() }
-        ]
-      }
+      tags: [
+        { name: "Content-Type", value: "application/json" },
+        { name: "App-Name", value: APP_NAME },
+        { name: "Type", value: "comment" },
+        { name: "Root-Tx", value: reviewTxId },
+        { name: "Unix-Time", value: timestamp.toString() }
+      ]
+    }));
+
+    const turbo = TurboFactory.unauthenticated();
+
+    const uploadResult = await turbo.uploadSignedDataItem({
+      dataItemStreamFactory: () => new Blob([signedDataItem]).stream(),
+      dataItemSizeFactory: () => signedDataItem.byteLength
     });
 
     return {

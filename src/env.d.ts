@@ -22,6 +22,7 @@ type ArweaveWalletProvider = {
   connect: (permissions: string[]) => Promise<void>;
   disconnect: () => Promise<void>;
   getActiveAddress: () => Promise<string>;
+  getActivePublicKey: () => Promise<string>;
   sign: (transaction: unknown) => Promise<unknown>;
   signDataItem: (dataItem: {
     data: string | Uint8Array;
