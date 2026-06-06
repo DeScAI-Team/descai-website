@@ -4,8 +4,8 @@ import { fallbackDiscoveredTokens } from "@/data/fallbackTokens";
 import type { DiscoveredToken, TokenMarketSnapshot, TokenWithMarketData } from "@/types/token";
 import { readJsonCache, writeJsonCache } from "@/utils/localCache";
 
-const DISCOVERY_CACHE_KEY = "descai.tokens.discovery.v2";
-const MARKET_CACHE_KEY = "descai.tokens.market.v2";
+const DISCOVERY_CACHE_KEY = "descai.tokens.discovery.v5";
+const MARKET_CACHE_KEY = "descai.tokens.market.v3";
 const ROTATION_CURSOR_KEY = "descai.tokens.rotation.cursor.v2";
 
 const DISCOVERY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -56,7 +56,29 @@ const isDiscoveryFresh = (cache: DiscoveryCache | null) => {
 };
 
 export const getCachedMarketSnapshots = (): Record<string, TokenMarketSnapshot> => {
-  return readMarketCache().snapshots;
+  return sanitizeSnapshots(readMarketCache().snapshots);
+};
+
+const positiveNumber = (value: number | null | undefined): number | null =>
+  typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+
+const snapshotHasQuote = (snapshot: TokenMarketSnapshot | undefined): boolean => {
+  if (!snapshot) return false;
+  return (
+    positiveNumber(snapshot.price) !== null ||
+    positiveNumber(snapshot.fdv) !== null ||
+    positiveNumber(snapshot.marketCap) !== null
+  );
+};
+
+const sanitizeSnapshots = (snapshots: Record<string, TokenMarketSnapshot>): Record<string, TokenMarketSnapshot> => {
+  const sanitized: Record<string, TokenMarketSnapshot> = {};
+  for (const [coinKey, snapshot] of Object.entries(snapshots)) {
+    if (snapshotHasQuote(snapshot)) {
+      sanitized[coinKey] = snapshot;
+    }
+  }
+  return sanitized;
 };
 
 const seededSnapshotFor = (token: DiscoveredToken): TokenMarketSnapshot | undefined => {
@@ -78,18 +100,19 @@ const mergeSnapshotWithSeed = (
   snapshot: TokenMarketSnapshot | undefined,
   seed: TokenMarketSnapshot | undefined
 ): TokenMarketSnapshot | undefined => {
-  if (!snapshot) return seed;
-  if (!seed) return snapshot;
+  const liveSnapshot = snapshotHasQuote(snapshot) ? snapshot : undefined;
+  if (!liveSnapshot) return seed;
+  if (!seed) return liveSnapshot;
 
   return {
     ...seed,
-    ...snapshot,
-    price: snapshot.price ?? seed.price,
-    priceChange24h: snapshot.priceChange24h ?? seed.priceChange24h,
-    fdv: snapshot.fdv ?? seed.fdv,
-    marketCap: snapshot.marketCap ?? seed.marketCap,
-    volume24h: snapshot.volume24h ?? seed.volume24h,
-    timestampMs: snapshot.timestampMs ?? seed.timestampMs
+    ...liveSnapshot,
+    price: positiveNumber(liveSnapshot.price) ?? positiveNumber(seed.price),
+    priceChange24h: liveSnapshot.priceChange24h ?? seed.priceChange24h,
+    fdv: positiveNumber(liveSnapshot.fdv) ?? positiveNumber(seed.fdv),
+    marketCap: positiveNumber(liveSnapshot.marketCap) ?? positiveNumber(seed.marketCap),
+    volume24h: positiveNumber(liveSnapshot.volume24h) ?? positiveNumber(seed.volume24h),
+    timestampMs: liveSnapshot.timestampMs ?? seed.timestampMs
   };
 };
 
@@ -145,12 +168,12 @@ export const refreshSnapshots = async (
   if (!tokens.length) {
     return existingSnapshots ?? getCachedMarketSnapshots();
   }
-  const base = existingSnapshots ?? getCachedMarketSnapshots();
-  const fresh = await fetchTokenSnapshots(tokens);
-  const merged = {
+  const base = sanitizeSnapshots(existingSnapshots ?? getCachedMarketSnapshots());
+  const fresh = sanitizeSnapshots(await fetchTokenSnapshots(tokens));
+  const merged = sanitizeSnapshots({
     ...base,
     ...fresh
-  };
+  });
   writeMarketCache(merged);
   return merged;
 };

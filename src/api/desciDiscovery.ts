@@ -1,7 +1,7 @@
 import type { DiscoveredToken, TokenPlatform, TokenSource } from "@/types/token";
 import { extractLooseTokenFields, extractRecords, extractTokenCore, isRecord, looksLikeBioIpt, parseChain } from "@/utils/tokenNormalization";
 
-const PUMP_DISCOVERY_URL = "/api/pump-science/token-tickers";
+const PUMP_DISCOVERY_URL = "/api/pump-science/token-pools";
 const BIODAO_DAOS_URL = "/api/bio/liquid-daos";
 const BIODAO_AGENTS_URL = "/api/bio/liquid-agents";
 const MOLECULE_DISCOVERY_URL = "/api/molecule/ipts";
@@ -16,15 +16,6 @@ const safeFetchJson = async (url: string): Promise<unknown> => {
   return response.json();
 };
 
-const fetchMoleculeRecords = async (): Promise<JsonRecord[]> => {
-  try {
-    const payload = await safeFetchJson(MOLECULE_DISCOVERY_URL);
-    return extractRecords(payload);
-  } catch {
-    return [];
-  }
-};
-
 type NormalizeOptions = {
   platform: TokenPlatform;
   source: TokenSource;
@@ -33,6 +24,9 @@ type NormalizeOptions = {
 
 const fallbackSeededCore = (record: JsonRecord) => {
   if (!isRecord(record.marketSeed)) return null;
+
+  const core = extractTokenCore(record);
+  if (core) return core;
 
   const loose = extractLooseTokenFields(record);
   if (!loose) return null;
@@ -57,7 +51,7 @@ const normalizeRecords = (records: JsonRecord[], options: NormalizeOptions): Dis
     const cleanSymbol = core.symbol.replace(/\s+/g, "").toUpperCase();
     const symbol = cleanSymbol.startsWith("$") ? cleanSymbol : `$${cleanSymbol}`;
     const name = core.name;
-    const id = `${core.coinKey}:${options.source}`;
+    const id = core.coinKey ? `${core.coinKey}:${options.source}` : `${options.source}:${core.address ?? core.symbol}`;
     const marketSeed = isRecord(record.marketSeed)
       ? {
           price: typeof record.marketSeed.price === "number" ? record.marketSeed.price : null,
@@ -121,7 +115,7 @@ const dedupeTokens = (tokens: DiscoveredToken[]): DiscoveredToken[] => {
 export async function discoverAllDesciTokens(): Promise<DiscoveredToken[]> {
   const settled = await Promise.allSettled([
     safeFetchJson(PUMP_DISCOVERY_URL),
-    fetchMoleculeRecords(),
+    safeFetchJson(MOLECULE_DISCOVERY_URL),
     safeFetchJson(BIODAO_DAOS_URL),
     safeFetchJson(BIODAO_AGENTS_URL)
   ]);
@@ -136,7 +130,8 @@ export async function discoverAllDesciTokens(): Promise<DiscoveredToken[]> {
   }
 
   if (moleculeResult.status === "fulfilled") {
-    tokens.push(...normalizeRecords(moleculeResult.value, { platform: "Molecule", source: "molecule" }));
+    const moleculeRecords = extractRecords(moleculeResult.value);
+    tokens.push(...normalizeRecords(moleculeRecords, { platform: "Molecule", source: "molecule" }));
   }
 
   if (bioDaosResult.status === "fulfilled") {

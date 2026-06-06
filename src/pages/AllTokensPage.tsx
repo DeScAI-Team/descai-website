@@ -9,6 +9,11 @@ import { compareTokens, toggleSort, type SortState } from "@/utils/tokenSorting"
 
 const PAGE_SIZE = 20;
 
+const tokenPrice = (token: { market?: { price?: number | null }; marketSeed?: { price?: number | null } }) => {
+  const price = token.market?.price ?? token.marketSeed?.price;
+  return typeof price === "number" && Number.isFinite(price) ? price : null;
+};
+
 const AllTokensPage = () => {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortState>({ field: "fdv", direction: "desc" });
@@ -18,14 +23,7 @@ const AllTokensPage = () => {
     rotationBatchSize: 60
   });
   const realDataTokens = useMemo(
-    () =>
-      tokens.filter(
-        (token) =>
-          token.chain !== "unknown" &&
-          (token.market?.price ?? 0) > 0 &&
-          token.market?.price !== null &&
-          token.market?.price !== undefined
-      ),
+    () => tokens.filter((token) => token.chain !== "unknown" && (tokenPrice(token) ?? 0) > 0),
     [tokens]
   );
 
@@ -51,11 +49,7 @@ const AllTokensPage = () => {
   const start = (currentPage - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE;
   const paginated = sorted.slice(start, end);
-  const withMarketData = filtered.filter(
-    (token) =>
-      token.market?.price !== null &&
-      token.market?.price !== undefined
-  ).length;
+  const withMarketData = filtered.filter((token) => (tokenPrice(token) ?? 0) > 0).length;
 
   const handleSort = (field: TokenSortField) => {
     setSort((current) => toggleSort(current, field));
@@ -73,13 +67,18 @@ const AllTokensPage = () => {
     : "—";
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-midnight px-4 py-10 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-midnight text-white">
       <div className="gradient-bg pointer-events-none" aria-hidden="true" />
       <div className="noise-overlay" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-8">
-        <Navbar />
+      <div className="relative z-10 px-4 pb-10 pt-4 lg:px-6 lg:pb-12 lg:pt-0">
+        <div className="sticky top-0 z-50 -mx-4 border-b border-[#263f72]/60 bg-[#050914]/88 px-4 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:-mx-6 lg:px-6">
+          <div className="mx-auto flex w-full justify-center">
+            <Navbar />
+          </div>
+        </div>
 
+        <main className="mx-auto mt-6 flex w-full max-w-6xl flex-col items-center gap-8">
         <section className="w-full space-y-4 rounded-[24px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)]">
           <div className="rounded-[23px] border border-[#263f72] bg-[#071126]/92 p-6 shadow-[inset_0_1px_0_rgba(80,126,205,0.16)] backdrop-blur">
             <header className="flex flex-wrap items-center justify-between gap-4">
@@ -167,6 +166,7 @@ const AllTokensPage = () => {
         </section>
 
         <Footer />
+        </main>
       </div>
     </div>
   );

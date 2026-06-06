@@ -130,7 +130,11 @@ export async function fetchTokenSnapshots(tokens: DiscoveredToken[]): Promise<Re
         if ((snapshot.fdv === null || snapshot.fdv === undefined) && snapshot.marketCap !== null) {
           snapshot.fdv = snapshot.marketCap;
         }
-        snapshots[coinKey] = snapshot;
+        const hasQuote =
+          (snapshot.price ?? 0) > 0 || (snapshot.fdv ?? 0) > 0 || (snapshot.marketCap ?? 0) > 0;
+        if (hasQuote) {
+          snapshots[coinKey] = snapshot;
+        }
       }
     } catch (error) {
       console.error("DefiLlama batch failed", error);

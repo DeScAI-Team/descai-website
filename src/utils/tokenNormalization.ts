@@ -97,6 +97,7 @@ const inferChainFromRecord = (record: JsonRecord, address: string): TokenChain =
   if (/(\b|_)sol(ana)?(\b|_)/.test(serialized)) return "solana";
   if (/(\b|_)base(\b|_)/.test(serialized)) return "base";
   if (address.startsWith("0x")) return "ethereum";
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) return "solana";
   return "unknown";
 };
 
