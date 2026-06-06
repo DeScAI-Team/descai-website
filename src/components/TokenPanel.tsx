@@ -34,8 +34,8 @@ const TokenPanel = () => {
     : "—";
 
   return (
-    <article className="rounded-[24px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)]">
-      <div className="rounded-[23px] border border-[#263f72] bg-[#071126]/92 px-6 py-7 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
+    <article className="rounded-[20px] border border-[#2a4580]/85 bg-[linear-gradient(148deg,rgba(32,52,102,0.88),rgba(7,12,28,0.98))] p-px shadow-[0_16px_44px_rgba(1,4,18,0.55),0_0_20px_rgba(68,121,214,0.1)]">
+      <div className="rounded-[19px] border border-[#2f4a82]/90 bg-[#060f22]/95 px-6 py-7 shadow-[inset_0_1px_0_rgba(88,132,210,0.1)]">
         <header className="flex flex-wrap items-center justify-between gap-3 text-white">
           <h4 className="neon-heading neon-heading-left text-left text-lg">Project Tokens</h4>
           <div className="flex items-center gap-2 text-sm text-white/70">

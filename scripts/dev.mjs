@@ -17,7 +17,8 @@ const start = (name, command, args) => {
   const child = spawn(command, args, {
     cwd: projectRoot,
     stdio: "inherit",
-    env: childEnv
+    env: childEnv,
+    shell: process.platform === "win32"
   });
 
   children.add(child);

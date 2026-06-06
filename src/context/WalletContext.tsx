@@ -21,8 +21,36 @@ const WANDER_PERMISSIONS = ["ACCESS_ADDRESS", "SIGN_TRANSACTION"] as const;
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
 
-const getMetaMaskProvider = () => window.ethereum;
+type InjectedEthereum = NonNullable<Window["ethereum"]>;
+
+/** When several wallets are installed, `window.ethereum` is often a proxy; MetaMask must be selected explicitly. */
+const getMetaMaskProvider = (): InjectedEthereum | undefined => {
+  if (typeof window === "undefined") return undefined;
+
+  const root = window.ethereum;
+  if (!root) return undefined;
+
+  if (Array.isArray(root)) {
+    return (root as InjectedEthereum[]).find((p) => p.isMetaMask);
+  }
+
+  // Several wallets at once: only use the real MetaMask EIP-1193 instance.
+  if (root.providers?.length) {
+    return root.providers.find((p) => p.isMetaMask);
+  }
+
+  // Single injector (classic MetaMask-only setup, or legacy providers without a list).
+  return root;
+};
+
 const getWanderProvider = () => window.arweaveWallet;
+
+/** MetaMask expects `personal_sign` data as a hex-encoded UTF-8 string (EIP-191). */
+const utf8StringToHex = (message: string) => {
+  const bytes = new TextEncoder().encode(message);
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `0x${hex}`;
+};
 
 const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "Wallet request failed");
 
@@ -147,7 +175,8 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       if (walletType === "metamask") {
         const provider = getMetaMaskProvider();
         if (!provider) throw new Error("MetaMask is not installed.");
-        return provider.request({ method: "personal_sign", params: [message, address] });
+        const payload = message.startsWith("0x") ? message : utf8StringToHex(message);
+        return provider.request({ method: "personal_sign", params: [payload, address] });
       }
 
       const provider = getWanderProvider();

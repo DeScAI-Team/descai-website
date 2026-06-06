@@ -1,3 +1,5 @@
+export const DEFAULT_REVIEW_AUTHOR = "DeScAi Agent";
+
 /**Categories (originality, tokenomics_governance, etc.) */
 export type ReviewSection = {
   [key: string]: unknown;
@@ -27,6 +29,9 @@ export type ReviewListItem = {
   title: string | null;
   paper_id: string | null;
   dao_name?: string | null;
+  platform?: string | null;
+  category?: string | null;
+  compound?: string | null;
   average_score?: number | null;
   featured?: boolean;
 };
@@ -35,6 +40,7 @@ export type ReviewListItem = {
 export type Review = ReviewListItem & {
   categories?: ReviewCategory[];
   average_score?: number | null;
+  review_statement?: string | null;
   info?: ReviewInfoSection[];
   originality_score?: number | null;
   clarity_score?: number | null;

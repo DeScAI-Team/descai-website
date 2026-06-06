@@ -1,10 +1,12 @@
 import clsx from "clsx";
+import { Link } from "react-router-dom";
 
-type SnapshotsPanelProps = {
+type SnapshotsAsideProps = {
   className?: string;
 };
 
-const SnapshotsPanel = ({ className }: SnapshotsPanelProps) => {
+/** Home-only snapshots promo; mirrors `SnapshotsPanel` styling with a working CTA. */
+const SnapshotsAside = ({ className }: SnapshotsAsideProps) => {
   return (
     <section
       className={clsx(
@@ -23,18 +25,19 @@ const SnapshotsPanel = ({ className }: SnapshotsPanelProps) => {
             Access past snapshots and donate for access to our most recent releases.
           </p>
 
-          <button
-            type="button"
-            disabled
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#263f72] bg-[#0b1835]/70 px-4 py-3 text-[0.85rem] font-semibold uppercase tracking-[0.22em] text-white opacity-90"
+          <Link
+            to="/?snapshots=1"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#263f72] bg-[#0b1835]/70 px-4 py-3 text-[0.85rem] font-semibold uppercase tracking-[0.22em] text-white transition hover:border-[#74b6ff]/35 hover:bg-[#13244c]"
           >
             View snapshots
-            <span aria-hidden className="text-white/60">↗</span>
-          </button>
+            <span aria-hidden className="text-white/60">
+              ↗
+            </span>
+          </Link>
         </div>
       </article>
     </section>
   );
 };
 
-export default SnapshotsPanel;
+export default SnapshotsAside;

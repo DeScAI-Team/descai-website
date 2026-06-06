@@ -10,14 +10,13 @@ const Footer = ({ className = "" }: FooterProps) => {
           <span className="font-semibold text-white">DeScAI</span>
           <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.18em] text-white/70">
             <span>
-              Website built by{" "}
               <a
-                href="https://zurabikoch-portfolio.netlify.app/"
+                href="https://dexscreener.com/base/0x0a9fbaa51f0981c004dc699d613b12c93cd1a01c14c5c5a3f8a2b21f93427614"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white hover:text-[#9fc3ff] underline-offset-4 hover:underline"
               >
-                Zurabi Kochiashvili
+                Ticker: $DESC
               </a>
             </span>
             <span className="hidden h-3 w-px bg-[#20315e] md:block" aria-hidden />

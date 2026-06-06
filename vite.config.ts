@@ -8,6 +8,8 @@ import { playwright } from '@vitest/browser-playwright';
 const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
+const trimEnv = (value: string | undefined) => (typeof value === "string" ? value.trim() : "");
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
@@ -15,7 +17,19 @@ export default defineConfig(({ mode }) => {
     throw new Error("Use MOLECULE_API_KEY instead of VITE_MOLECULE_API_KEY. Molecule secrets must stay server-side.");
   }
 
+  /** Unprefixed keys from .env are not on import.meta.env; inject for snapshot UI only (see .env.example). */
+  const snapshotEnvBridge = {
+    treasuryEth: trimEnv(env.ETH_WALLET_ADDRESS),
+    rpcUrl: trimEnv(env.RPC),
+    snapshotBucket: trimEnv(env.SNAPSHOT_BUCKET),
+    arweaveDonation: trimEnv(env.ARWEAVE_WALLET_ADDRESS),
+    aktDonation: trimEnv(env.AKT_WALLET_ADDRESS)
+  };
+
   return {
+    define: {
+      __SNAPSHOT_ENV_BRIDGE__: JSON.stringify(snapshotEnvBridge)
+    },
     plugins: [react()],
     resolve: {
       alias: {
@@ -28,6 +42,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
+      allowedHosts: ["changing-refugees-cold-bidding.trycloudflare.com"],
       proxy: {
         "/api": {
           target: "http://localhost:3001",

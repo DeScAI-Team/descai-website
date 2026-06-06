@@ -18,11 +18,11 @@ const PlatformPanel = ({ className }: PlatformPanelProps) => {
   return (
     <section
       className={clsx(
-        "w-full rounded-[24px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)]",
+        "w-full rounded-[20px] border border-[#2a4580]/85 bg-[linear-gradient(148deg,rgba(32,52,102,0.88),rgba(7,12,28,0.98))] p-px shadow-[0_16px_44px_rgba(1,4,18,0.55),0_0_20px_rgba(68,121,214,0.1)]",
         className
       )}
     >
-      <div className="flex h-full flex-col gap-4 rounded-[23px] border border-[#263f72] bg-[#071126]/92 p-6 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
+      <div className="flex h-full flex-col gap-4 rounded-[19px] border border-[#2f4a82]/90 bg-[#060f22]/95 p-6 shadow-[inset_0_1px_0_rgba(88,132,210,0.1)]">
         <div className="mt-3 text-center">
           <h3 className="neon-heading">By Platform</h3>
           <span className="neon-underline" />
@@ -55,11 +55,11 @@ const PlatformPanel = ({ className }: PlatformPanelProps) => {
                     </span>
                   </button>
                   {openGroups[group.title] && (
-                    <ul className="space-y-1 px-4 pb-4 pt-2 text-[0.98rem] text-white/72">
+                    <ul className="space-y-1 px-4 pb-4 pt-2 font-sans text-[0.98rem] font-normal leading-normal tracking-normal text-white/72 antialiased">
                       {group.items.map((item) => (
                         <li key={item} className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-[#59b8ff]" aria-hidden />
-                          <span className="flex-1">{item.replace(/^>\s*/, "")}</span>
+                          <span className="flex-1 font-sans font-normal">{item.replace(/^>\s*/, "")}</span>
                         </li>
                       ))}
                     </ul>

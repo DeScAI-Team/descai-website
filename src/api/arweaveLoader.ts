@@ -1,10 +1,13 @@
-import type { Review, ReviewCategory, ReviewInfoSection, ReviewListItem } from "@/types/review";
+import { DEFAULT_REVIEW_AUTHOR, type Review, type ReviewCategory, type ReviewInfoSection, type ReviewListItem } from "@/types/review";
 
 type ArweaveIndexTransaction = {
   txid?: string;
   id?: string;
   timestamp?: string | null;
+  tags?: Array<{ name: string; value: string }>;
 };
+
+type ArweaveTag = { name: string; value: string };
 
 type ArweaveDocument = Record<string, unknown>;
 
@@ -84,13 +87,39 @@ const compareByScoreDesc = (left: { average_score: number | null; created_at: st
 
 const getArweaveDocumentUrl = (txid: string) => `${ARWEAVE_GATEWAY_URL}/${txid}`;
 
-const parseSummary = (txid: string, document: ArweaveDocument, fallbackDate?: string | null) => {
-  const title = readString(document, ["name", "title"]) ?? readString(document, ["dao_name"]) ?? "Untitled Review";
-  const dao_name = readString(document, ["dao_name"]);
+const tagsToMap = (tags: ArweaveTag[]): Map<string, string> => {
+  const map = new Map<string, string>();
+  for (const tag of tags) {
+    if (tag?.name) {
+      map.set(tag.name, tag.value ?? "");
+    }
+  }
+  return map;
+};
+
+const parseSummary = (
+  txid: string,
+  document: ArweaveDocument,
+  fallbackDate?: string | null,
+  tags: ArweaveTag[] = []
+) => {
+  const tagMap = tagsToMap(tags);
+  const title =
+    readString(document, ["name", "title", "research_name"]) ??
+    readString(document, ["compounds"]) ??
+    tagMap.get("compounds")?.trim() ??
+    tagMap.get("research_name")?.trim() ??
+    tagMap.get("name")?.trim() ??
+    readString(document, ["dao_name"]) ??
+    "Untitled Review";
+  const dao_name = readString(document, ["dao_name"]) ?? DEFAULT_REVIEW_AUTHOR;
+  const platform = readString(document, ["platform"]) ?? tagMap.get("platform")?.trim() ?? null;
+  const category = readString(document, ["category"]) ?? tagMap.get("category")?.trim() ?? null;
+  const compound = readString(document, ["compounds"]) ?? tagMap.get("compounds")?.trim() ?? null;
   const date = readString(document, ["date", "review_date", "created_at"]) ?? fallbackDate ?? new Date(0).toISOString();
   const average_score = readNumber(document, ["average_score"]);
 
-  return { txid, title, dao_name, date, average_score };
+  return { txid, title, dao_name, platform, category, compound, date, average_score };
 };
 
 const normalizeIndexTransactions = (payload: unknown): ArweaveIndexTransaction[] => {
@@ -105,7 +134,11 @@ const normalizeIndexTransactions = (payload: unknown): ArweaveIndexTransaction[]
 
     const maybeTxid = "txid" in item ? item.txid : "id" in item ? item.id : undefined;
     return typeof maybeTxid === "string" && maybeTxid.length > 0;
-  });
+  }).map((item) => ({
+    ...item,
+    txid: item.txid ?? item.id,
+    tags: Array.isArray(item.tags) ? item.tags : undefined
+  }));
 };
 
 export async function fetchIndexTransactions(): Promise<ArweaveIndexTransaction[]> {
@@ -134,12 +167,25 @@ export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewInde
         }
 
         const document = await fetchArweaveDocument(txid);
-        return parseSummary(txid, document, transaction.timestamp ?? null);
+        return parseSummary(txid, document, transaction.timestamp ?? null, transaction.tags ?? []);
       })
     );
 
     const summaries = documents
-      .filter((result): result is PromiseFulfilledResult<{ txid: string; title: string; dao_name: string | null; date: string; average_score: number | null }> => result.status === "fulfilled")
+      .filter(
+        (
+          result
+        ): result is PromiseFulfilledResult<{
+          txid: string;
+          title: string;
+          dao_name: string | null;
+          platform: string | null;
+          category: string | null;
+          compound: string | null;
+          date: string;
+          average_score: number | null;
+        }> => result.status === "fulfilled"
+      )
       .map((result) => result.value)
       .sort((left, right) => compareByScoreDesc({ average_score: left.average_score, created_at: left.date }, { average_score: right.average_score, created_at: right.date }));
 
@@ -163,6 +209,9 @@ export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewInde
         created_at: summary.date,
         paper_id: summary.txid,
         dao_name: summary.dao_name,
+        platform: summary.platform,
+        category: summary.category,
+        compound: summary.compound,
         average_score: summary.average_score,
         featured: featuredSet.has(summary.txid)
       })),
@@ -208,7 +257,22 @@ const buildCategories = (document: ArweaveDocument): ReviewCategory[] => {
 };
 
 const buildInfoSections = (document: ArweaveDocument): ReviewInfoSection[] => {
-  const reservedKeys = new Set(["name", "date", "average_score", "dao_name", "review_date", "created_at", "title", "categories"]);
+  const reservedKeys = new Set([
+    "name",
+    "date",
+    "average_score",
+    "composite_score",
+    "dao_name",
+    "review_date",
+    "created_at",
+    "title",
+    "research_name",
+    "compounds",
+    "platform",
+    "category",
+    "categories",
+    "review_statement"
+  ]);
 
   return Object.entries(document)
     .filter(([key]) => !reservedKeys.has(key))
@@ -230,11 +294,16 @@ const buildInfoSections = (document: ArweaveDocument): ReviewInfoSection[] => {
 const mapDocumentToReview = (txid: string, document: ArweaveDocument): Review => ({
   id: txid,
   txid,
-  title: readString(document, ["name", "title"]) ?? readString(document, ["dao_name"]) ?? "Untitled Review",
+  title:
+    readString(document, ["name", "title", "research_name"]) ??
+    readString(document, ["compounds"]) ??
+    readString(document, ["dao_name"]) ??
+    "Untitled Review",
   created_at: readString(document, ["date", "review_date", "created_at"]) ?? new Date().toISOString(),
   paper_id: txid,
-  dao_name: readString(document, ["dao_name"]),
-  average_score: readNumber(document, ["average_score"]),
+  dao_name: readString(document, ["dao_name"]) ?? DEFAULT_REVIEW_AUTHOR,
+  average_score: readNumber(document, ["average_score", "composite_score"]),
+  review_statement: readString(document, ["review_statement"]),
   categories: buildCategories(document),
   info: buildInfoSections(document)
 });

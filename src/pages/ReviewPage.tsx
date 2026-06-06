@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { fetchReviewFromArweave } from "@/api/reviews";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
-import type { Review, ReviewSection } from "@/types/review";
+import { DEFAULT_REVIEW_AUTHOR, type Review } from "@/types/review";
 import { fetchComments, publishComment, WANDER_COMMENT_CONNECT_MESSAGE } from "@/api/comments";
 import type { ArweaveComment } from "@/api/comments";
 import { useWallet } from "@/context/WalletContext";
@@ -21,23 +21,23 @@ const formatCompactId = (value?: string | null) => {
   return `${value.slice(0, 8)}...${value.slice(-6)}`;
 };
 
-/** Compute average from the dynamic categories array, or from the average_score */
+const normalizeScore = (value?: number | null) =>
+  typeof value === "number" && !Number.isNaN(value) ? Math.round(value <= 1 ? value * 100 : value) : null;
+
 const averageScore = (review: Review | null): number | null => {
   if (!review) return null;
-  if (typeof review.average_score === "number") return review.average_score;
-  const cats = review.categories ?? [];
-  const scores = cats.map((c) => c.score).filter((s): s is number => typeof s === "number");
+  const fromAverage = normalizeScore(review.average_score);
+  if (fromAverage !== null) return fromAverage;
+  const scores = (review.categories ?? [])
+    .map((c) => normalizeScore(c.score))
+    .filter((s): s is number => typeof s === "number");
   if (!scores.length) return null;
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 };
 
-const SCORE_COLORS = [
-  "#ff4444", "#3b8cff", "#52ff92", "#b546ff",
-  "#ff6b2d", "#f7e16a", "#00e5ff", "#ff79c6",
-  "#50fa7b", "#ffb86c"
-];
+const SCORE_COLORS = ["#ff4444", "#b546ff", "#ff6b2d", "#3b8cff", "#52ff92", "#f7e16a", "#00e5ff", "#ff79c6"];
 
-const SECTION_ICONS = ["💡", "📝", "🔬", "📊", "⚖️", "🏛️", "🤝", "🔗", "🧬", "📈"];
+const SECTION_ICONS = ["💡", "⚖️", "🔬", "📊", "🏛️", "🤝", "🔗", "🧬", "📈", "📝"];
 
 const formatCommentTime = (timestamp: number) => {
   const date = new Date(timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000);
@@ -55,7 +55,7 @@ const getCommentInitials = (owner?: string) => {
   return cleaned.slice(0, 2).toUpperCase() || "DC";
 };
 
-const getCommentAuthorLabel = (owner?: string) => owner ? formatCompactId(owner) : "Unknown wallet";
+const getCommentAuthorLabel = (owner?: string) => (owner ? formatCompactId(owner) : "Unknown wallet");
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
@@ -65,46 +65,36 @@ type CommentPublishMessage = {
   text: string;
 };
 
-/**Convert underscores to spaces for readability*/
-const humanizeKey = (key: string): string =>
-  key
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-
 const isSingleLineCategoryLabel = (label: string) => label.trim().toLowerCase() === "tokenomics governance";
 
-const SectionBlock = ({ title, icon, content }: { title: string; icon: string; content?: ReviewSection | null }) => {
-  if (!content) return null;
+const getReviewStatement = (review: Review | null): string | null => {
+  if (!review) return null;
+  if (review.review_statement?.trim()) return review.review_statement.trim();
+  const fromInfo = review.info?.find((item) => item.key === "review_statement");
+  const text = fromInfo?.content?.text ?? fromInfo?.content?.review_statement;
+  return typeof text === "string" && text.trim() ? text.trim() : null;
+};
 
-  // Dynamically collect every non-empty property from the section
-  const entries = Object.entries(content)
-    .filter(([, v]) => v !== undefined && v !== null && v !== "")
-    .map(([key, value]) => ({ label: humanizeKey(key), value }));
-
-  if (!entries.length) return null;
-
-  const renderValue = (value: unknown) => {
-    if (typeof value === "boolean") return value ? "Yes" : "No";
-    if (typeof value === "number") return String(value);
-    if (typeof value === "string") return value;
-    return JSON.stringify(value);
-  };
+const RationaleSection = ({
+  title,
+  icon,
+  rationale
+}: {
+  title: string;
+  icon: string;
+  rationale?: string | null;
+}) => {
+  if (!rationale?.trim()) return null;
 
   return (
-    <section className="rounded-2xl border border-[#263f72] bg-[#101b3c]/92 px-6 py-5 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
+    <section className="rounded-[16px] border border-[#263d70] bg-[#14214a]/55 px-5 py-5 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
       <header className="flex items-center gap-3">
-        <span className="text-lg">{icon}</span>
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <span className="text-lg" aria-hidden="true">
+          {icon}
+        </span>
+        <h3 className="font-display text-lg font-semibold text-white">{title}</h3>
       </header>
-      <div className="mt-4 space-y-3 text-sm leading-relaxed text-white/80">
-        {entries.map(({ label, value }) => (
-          <div key={label}>
-            <p className="text-xs uppercase tracking-[0.35em] text-white/55">{label}</p>
-            <p className="mt-1 text-base text-white/90">{renderValue(value)}</p>
-          </div>
-        ))}
-      </div>
+      <p className="mt-4 text-base leading-relaxed text-white/78">{rationale}</p>
     </section>
   );
 };
@@ -114,17 +104,19 @@ const ScoreChip = ({ label, score, color }: { label: string; score: number | nul
   const display = score !== null ? score : "—";
 
   return (
-    <div className="flex flex-col items-center gap-3 text-xs uppercase tracking-wide">
-      <span className={`text-center text-white/70 ${isSingleLineCategoryLabel(label) ? "whitespace-nowrap" : ""}`}>{label}</span>
+    <div className="flex flex-col items-center gap-3 text-xs font-semibold uppercase tracking-wide text-white/58">
+      <span className={`text-center text-white/70 ${isSingleLineCategoryLabel(label) ? "md:whitespace-nowrap" : ""}`}>
+        {label.toUpperCase()}
+      </span>
       <div
-        className="relative h-24 w-24 rounded-full"
+        className="relative h-28 w-28 rounded-full shadow-[0_0_22px_rgba(87,136,255,0.1)]"
         style={{
           background:
-            `radial-gradient(circle at center, #1a2247 63%, transparent 64%), ` +
+            `radial-gradient(circle at center, #101936 63%, transparent 64%), ` +
             `conic-gradient(${color} ${angle}deg, rgba(80,126,205,0.18) 0)`
         }}
       >
-        <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-lg font-semibold text-white">
+        <div className="absolute inset-[14px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-[1.15rem] font-semibold text-white">
           {display}
           {score !== null && <span className="text-[0.65rem] font-normal text-white/60">%</span>}
         </div>
@@ -132,6 +124,18 @@ const ScoreChip = ({ label, score, color }: { label: string; score: number | nul
     </div>
   );
 };
+
+const PanelShell = ({ children }: { children: React.ReactNode }) => (
+  <section className="rounded-[24px] border border-[#243c68] bg-[linear-gradient(145deg,rgba(30,44,90,0.88),rgba(6,11,27,0.96)_45%,rgba(18,16,59,0.9))] p-[1px] shadow-[0_20px_70px_rgba(1,4,18,0.78),0_0_36px_rgba(87,115,255,0.14)]">
+    <div className="relative overflow-hidden rounded-[23px] border border-[#263f72] bg-[#071025]/92 px-4 pb-6 pt-4 text-white shadow-[inset_0_1px_0_rgba(80,126,205,0.12)] md:px-6 md:pb-8 md:pt-5">
+      <div className="absolute inset-0 -z-10 opacity-50">
+        <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#2b5176]" />
+        <div className="neon-blur left-1/4 top-1/2 bg-[#59b8ff]" />
+      </div>
+      {children}
+    </div>
+  </section>
+);
 
 const ReviewPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -195,28 +199,18 @@ const ReviewPage = () => {
   }, [id]);
 
   const overallScore = useMemo(() => averageScore(review), [review]);
+  const reviewStatement = useMemo(() => getReviewStatement(review), [review]);
 
-  /** Build score cards dynamically from existing categories */
   const scoreCards = useMemo(() => {
     const cats = review?.categories ?? [];
     return cats.map((cat, idx) => ({
       label: cat.label,
-      value: cat.score,
+      value: normalizeScore(cat.score),
       color: SCORE_COLORS[idx % SCORE_COLORS.length]
     }));
   }, [review]);
 
-  /** Pick the first available review_statement or rationale as top narrative */
-  // "Potentially we could target a specfic category for the narrative? I don't know what we should look for however...
-  // ...Or if we should try looking from a different section in Review so I'll keep it similar to the orginal" -Andrew
-  const narrative = useMemo(() => {
-    for (const cat of review?.categories ?? []) {
-      const sec = cat.section;
-      if (sec?.review_statement) return sec.review_statement as string;
-      if (sec?.rationale) return sec.rationale as string;
-    }
-    return null;
-  }, [review]);
+  const hasRatings = scoreCards.some(({ value }) => value !== null);
 
   const handlePublishComment = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -248,149 +242,236 @@ const ReviewPage = () => {
   };
 
   const renderBody = () => {
-    const wrap = (content: React.ReactNode) => (
-      <section className="rounded-[28px] border border-[#263e6c] bg-[linear-gradient(145deg,rgba(29,45,92,0.9),rgba(6,12,30,0.96))] p-[1px] shadow-[0_20px_58px_rgba(1,4,18,0.65),0_0_28px_rgba(68,121,214,0.12)]">
-        <div className="relative overflow-hidden rounded-[27px] border border-[#263f72] bg-[#071126]/92 px-8 py-10 text-white shadow-[inset_0_1px_0_rgba(80,126,205,0.16)]">
-          <div className="absolute inset-0 -z-10 opacity-50">
-            <div className="neon-blur left-1/3 top-6 translate-x-1/2 bg-[#2b5176]" />
-            <div className="neon-blur left-1/4 top-1/2 bg-[#59b8ff]" />
-          </div>
-          {content}
-        </div>
-      </section>
-    );
-
     if (loading) {
-      return wrap(
-        <div className="animate-pulse space-y-6 text-white/70">
-          <div className="flex items-center justify-between">
-            <div className="h-10 w-24 rounded-full bg-[#14214a]/72" />
-            <div className="h-14 w-40 rounded-lg bg-[#14214a]/72" />
+      return (
+        <PanelShell>
+          <div className="animate-pulse space-y-6 text-white/70">
+            <div className="flex items-center justify-between">
+              <div className="h-10 w-24 rounded-full bg-[#14214a]/72" />
+              <div className="h-14 w-40 rounded-lg bg-[#14214a]/72" />
+            </div>
+            <div className="h-8 w-3/4 rounded-lg bg-[#14214a]/72" />
+            <div className="h-4 w-1/3 rounded-lg bg-[#14214a]/72" />
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              {[...Array(6)].map((_, idx) => (
+                <div key={idx} className="h-28 rounded-2xl bg-[#14214a]/72" />
+              ))}
+            </div>
+            <div className="space-y-3">
+              <div className="h-5 w-40 rounded bg-[#14214a]/72" />
+              <div className="h-24 rounded-2xl bg-[#14214a]/72" />
+            </div>
           </div>
-          <div className="h-8 w-3/4 rounded-lg bg-[#14214a]/72" />
-          <div className="h-4 w-1/3 rounded-lg bg-[#14214a]/72" />
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {[...Array(6)].map((_, idx) => (
-              <div key={idx} className="h-28 rounded-2xl bg-[#14214a]/72" />
-            ))}
-          </div>
-          <div className="space-y-3">
-            <div className="h-5 w-40 rounded bg-[#14214a]/72" />
-            <div className="h-24 rounded-2xl bg-[#14214a]/72" />
-          </div>
-        </div>
+        </PanelShell>
       );
     }
 
     if (error) {
-      return wrap(
-        <div className="text-center text-white">
-          <p className="text-lg font-semibold">Failed to load review</p>
-          <p className="mt-2 text-white/80">{error}</p>
-          <button
-            className="mt-4 rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#263f72] hover:bg-[#1a2d5d]"
-            onClick={() => navigate("/")}
-          >
-            ← Back home
-          </button>
-        </div>
+      return (
+        <PanelShell>
+          <div className="text-center text-white">
+            <p className="text-lg font-semibold">Failed to load review</p>
+            <p className="mt-2 text-white/80">{error}</p>
+            <button
+              className="mt-4 rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#74b6ff]/35 hover:bg-[#1a2d5d]"
+              onClick={() => navigate("/")}
+            >
+              ← Back home
+            </button>
+          </div>
+        </PanelShell>
       );
     }
 
     if (!review) {
-      return wrap(
-        <div className="text-center text-white/80">
-          <p className="text-lg font-semibold">No review found</p>
-          <button
-            className="mt-4 rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#263f72] hover:bg-[#1a2d5d]"
-            onClick={() => navigate("/")}
-          >
-            ← Back home
-          </button>
-        </div>
+      return (
+        <PanelShell>
+          <div className="text-center text-white/80">
+            <p className="text-lg font-semibold">No review found</p>
+            <button
+              className="mt-4 rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#74b6ff]/35 hover:bg-[#1a2d5d]"
+              onClick={() => navigate("/")}
+            >
+              ← Back home
+            </button>
+          </div>
+        </PanelShell>
       );
     }
 
-    return wrap(
-      <>
-        <header className="flex flex-wrap items-start gap-4">
+    const meta = [
+      { label: "Published", value: formatDate(review.created_at) },
+      { label: "Average Score", value: overallScore !== null ? `${overallScore}%` : "Pending" },
+      { label: "Categories", value: String(review.categories?.length ?? 0) }
+    ];
+
+    return (
+      <PanelShell>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#263f72] hover:bg-[#1a2d5d]"
+            className="rounded-full border border-[#263f72] bg-[#14214a]/72 px-4 py-2 text-sm font-semibold text-[#9fc3ff] transition hover:border-[#74b6ff]/35 hover:bg-[#1a2d5d] hover:text-white"
           >
             ← Back
           </button>
-          <div className="ml-auto max-w-full text-left text-[10px] uppercase tracking-[0.28em] text-white/60 md:max-w-[24rem] md:text-right">
-            <p>Arweave TXID</p>
-            <p className="mt-2 text-base font-semibold normal-case tracking-[0.08em] text-white md:text-lg">
-              {formatCompactId(review.paper_id)}
-            </p>
-            <p className="mt-1 break-all text-[9px] normal-case tracking-[0.12em] text-white/45">
-              {review.id}
-            </p>
-          </div>
-        </header>
-
-        <h1 className="mt-6 text-3xl font-semibold leading-tight">
-          {review.title || "Untitled Research Paper"}
-        </h1>
-        <p className="mt-2 text-sm uppercase tracking-[0.3em] text-white/60">
-          Published {formatDate(review.created_at)}
-          {overallScore !== null && <span className="ml-3 text-white/80">Average score: {overallScore}%</span>}
-        </p>
-
-        {/* #comments Top-of-review shortcut into the flat comment section. */}
-        <a
-          href="#comments"
-          className="mt-4 inline-flex text-sm font-semibold uppercase tracking-[0.22em] text-[#9fc3ff] transition hover:text-white"
-        >
-          Jump to comments
-        </a>
-
-        {narrative && (
-          <div className="mt-6 rounded-2xl border border-[#263f72] bg-[#101b3c]/92 px-6 py-5 text-base leading-relaxed text-white/85 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
-            {narrative}
-          </div>
-        )}
-
-        <div className="mt-8 grid grid-cols-2 gap-6 md:grid-cols-3">
-          {scoreCards.map(({ label, value, color }) => (
-            <ScoreChip key={label} label={label} score={value} color={color} />
-          ))}
+          <h2 className="flex-1 text-center">
+            <span className="featured-chip inline-flex">Research Review</span>
+          </h2>
         </div>
 
-        {/*General info sections (key_strengths, areas_for_improvement, ...)*/}
-        {(review.info ?? []).length > 0 && (
-          <div className="mt-8 space-y-4">
-            {(review.info ?? []).map((item) => (
-              <SectionBlock
-                key={item.key}
-                title={item.label}
-                icon="📌"
-                content={item.content}
+        <article className="relative overflow-hidden rounded-[20px] border border-[#385083] bg-[linear-gradient(135deg,rgba(28,43,92,0.82),rgba(8,14,38,0.92)_42%,rgba(33,17,88,0.72))] p-5 shadow-[inset_0_0_48px_rgba(121,86,255,0.08),0_16px_46px_rgba(0,0,0,0.45)]">
+          <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-[#7e47ff]/16 blur-[90px]" aria-hidden="true" />
+
+          <div className="relative grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="featured-visual min-h-[190px] overflow-hidden rounded-[18px] border border-[#4867af]/45 shadow-[0_20px_44px_rgba(0,0,0,0.34)]">
+              <span className="relative z-10 inline-flex items-center gap-2 rounded-r-full bg-[#6938e8] px-4 py-2 text-xs font-semibold text-[#eef4ff] shadow-[0_8px_24px_rgba(79,52,225,0.36)]">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current stroke-2">
+                  <path d="M12 3v18M3 12h18" />
+                </svg>
+                On-chain
+              </span>
+            </div>
+
+            <div className="min-w-0 space-y-4">
+              <header className="space-y-3">
+                <h1 className="font-display text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)] md:text-[1.65rem]">
+                  {review.title || "Untitled Research Paper"}
+                </h1>
+                <p className="text-xs uppercase tracking-[0.28em] text-white/48">
+                  Reviewed by{" "}
+                  <span className="font-semibold normal-case tracking-normal text-[#62a7ff]">
+                    {review.dao_name ?? DEFAULT_REVIEW_AUTHOR}
+                  </span>
+                </p>
+                <p className="break-all font-mono text-xs uppercase tracking-[0.14em] text-white/48">
+                  TXID: {formatCompactId(review.paper_id)}
+                </p>
+                <p className="break-all font-mono text-[10px] text-white/35">{review.id}</p>
+              </header>
+
+              <dl className="grid gap-0 overflow-hidden rounded-[16px] border border-[#263d70] bg-[#14214a]/72 text-sm shadow-[inset_0_1px_0_rgba(80,126,205,0.12)] md:grid-cols-3">
+                {meta.map(({ label, value }) => (
+                  <div
+                    key={label}
+                    className="flex items-center gap-3 border-b border-[#2f4271] px-3 py-3 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+                  >
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#5fa9ff]/40 text-[#65a7ff]">
+                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current stroke-2">
+                        <path d="M12 5v8l4 2" />
+                        <circle cx="12" cy="12" r="8" />
+                      </svg>
+                    </span>
+                    <div>
+                      <dt className="whitespace-nowrap text-sm text-white/56">{label}</dt>
+                      <dd className="font-semibold leading-snug">{value}</dd>
+                    </div>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+
+          <a
+            href="#comments"
+            className="relative mt-5 inline-flex text-sm font-semibold uppercase tracking-[0.22em] text-[#9fc3ff] transition hover:text-white"
+          >
+            Jump to comments
+          </a>
+
+          {reviewStatement && (
+            <section className="relative mt-5 space-y-3 text-sm leading-relaxed text-white/80">
+              <h2 className="text-base font-semibold uppercase tracking-[0.3em] text-[#a26bff]">Review Statement</h2>
+              <p className="text-base leading-relaxed text-white/72">{reviewStatement}</p>
+            </section>
+          )}
+
+          {hasRatings ? (
+            <div className="relative mt-6 grid grid-cols-2 gap-5 border-t border-[#263d70] pt-6 md:grid-cols-5">
+              {scoreCards.map(({ label, value, color }) => (
+                <ScoreChip key={label} label={label} score={value} color={color} />
+              ))}
+            </div>
+          ) : (
+            <div className="relative mt-6 rounded-2xl border border-[#263f72] bg-[#111936] px-4 py-3 text-sm text-white/70">
+              This review does not include category score breakdowns yet.
+            </div>
+          )}
+        </article>
+
+        {(review.categories ?? []).some((cat) => typeof cat.section?.rationale === "string" && cat.section.rationale.trim()) && (
+          <div className="mt-6 space-y-4">
+            {(review.categories ?? []).map((cat, idx) => (
+              <RationaleSection
+                key={cat.key}
+                title={cat.label}
+                icon={SECTION_ICONS[idx % SECTION_ICONS.length]}
+                rationale={typeof cat.section?.rationale === "string" ? cat.section.rationale : null}
               />
             ))}
           </div>
         )}
 
-        {/*Dynamic section blocks for all categories*/}
-        <div className="mt-10 space-y-5">
-          {(review.categories ?? []).map((cat, idx) => (
-            <SectionBlock
-              key={cat.key}
-              title={cat.label}
-              icon={SECTION_ICONS[idx % SECTION_ICONS.length]}
-              content={cat.section}
-            />
-          ))}
-        </div>
-
-        {/* #comments Flat, non-nested comment section for each review. */}
-        <section id="comments" className="mt-12 scroll-mt-8 rounded-2xl border border-[#263f72] bg-[#08142f]/92 px-6 py-6 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]">
+        <section
+          id="comments"
+          className="mt-6 scroll-mt-24 rounded-[16px] border border-[#263d70] bg-[#14214a]/55 px-5 py-6 shadow-[inset_0_1px_0_rgba(80,126,205,0.12)]"
+        >
           <header>
             <p className="text-xs uppercase tracking-[0.35em] text-white/55">Comments</p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Discussion</h2>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-white">Discussion</h2>
+            <p className="mt-2 text-xs text-white/50">
+              Comments are published to Arweave through Turbo. Comments may take up to 10 minutes to display. Wander
+              wallet must be connected.
+            </p>
           </header>
+
+          <form className="mt-5 space-y-3" onSubmit={handlePublishComment}>
+            <label htmlFor="review-comment" className="sr-only">
+              Write a comment
+            </label>
+            {commentPublishMessage ? (
+              <div
+                className={`min-h-32 rounded-[14px] border px-4 py-3 text-sm leading-relaxed ${
+                  commentPublishMessage.type === "success"
+                    ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100"
+                    : "border-red-400/30 bg-red-500/10 text-red-100"
+                }`}
+              >
+                <p>{commentPublishMessage.text}</p>
+                {commentPublishMessage.type === "error" && (
+                  <button
+                    type="button"
+                    onClick={() => setCommentPublishMessage(null)}
+                    className="mt-4 rounded-[10px] border border-white/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/85 transition hover:bg-white/10"
+                  >
+                    Edit comment
+                  </button>
+                )}
+              </div>
+            ) : (
+              <textarea
+                id="review-comment"
+                value={commentBody}
+                onChange={(event) => setCommentBody(event.target.value)}
+                placeholder="Write a comment..."
+                className="min-h-32 w-full resize-y rounded-[14px] border border-[#263f72] bg-[#0b1229] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-[#74b6ff]/50 focus:outline-none"
+              />
+            )}
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <button
+                type="submit"
+                disabled={!commentBody.trim() || publishingComment || commentPublishMessage?.type === "success"}
+                className="rounded-[12px] border border-[#74b6ff]/30 bg-[#162845] px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-[#d5ebff] transition hover:bg-[#1d3457] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {publishingComment ? "Publishing..." : "Publish"}
+              </button>
+            </div>
+          </form>
+
+          {commentError && (
+            <p className="mt-4 rounded-[12px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {commentError}
+            </p>
+          )}
 
           <div className="mt-5 space-y-3">
             {commentsLoading && (
@@ -428,70 +509,28 @@ const ReviewPage = () => {
               </article>
             ))}
           </div>
-
-          {commentError && (
-            <p className="mt-4 rounded-[12px] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-              {commentError}
-            </p>
-          )}
-
-          <form className="mt-5 space-y-3" onSubmit={handlePublishComment}>
-            <label htmlFor="review-comment" className="sr-only">
-              Write a comment
-            </label>
-            {commentPublishMessage ? (
-              <div
-                className={`min-h-32 rounded-[14px] border px-4 py-3 text-sm leading-relaxed ${
-                  commentPublishMessage.type === "success"
-                    ? "border-emerald-300/35 bg-emerald-500/10 text-emerald-100"
-                    : "border-red-400/30 bg-red-500/10 text-red-100"
-                }`}
-              >
-                <p>{commentPublishMessage.text}</p>
-                {commentPublishMessage.type === "error" && (
-                  <button
-                    type="button"
-                    onClick={() => setCommentPublishMessage(null)}
-                    className="mt-4 rounded-[10px] border border-white/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/85 transition hover:bg-white/10"
-                  >
-                    Edit comment
-                  </button>
-                )}
-              </div>
-            ) : (
-              <textarea
-                id="review-comment"
-                value={commentBody}
-                onChange={(event) => setCommentBody(event.target.value)}
-                placeholder="Write a comment..."
-                className="min-h-32 w-full resize-y rounded-[14px] border border-[#263f72] bg-[#0b1229] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-white/35 focus:border-[#74b6ff]/50 focus:outline-none"
-              />
-            )}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-white/50">Comments are published to Arweave through Turbo.</p>
-              <button
-                type="submit"
-                disabled={!commentBody.trim() || publishingComment || commentPublishMessage?.type === "success"}
-                className="rounded-[12px] border border-[#74b6ff]/30 bg-[#162845] px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.14em] text-[#d5ebff] transition hover:bg-[#1d3457] disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                {publishingComment ? "Publishing..." : "Publish"}
-              </button>
-            </div>
-          </form>
         </section>
-      </>
+      </PanelShell>
     );
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-midnight px-4 py-10 text-white">
+    <div className="relative min-h-screen overflow-hidden bg-midnight text-white">
       <div className="gradient-bg pointer-events-none" aria-hidden="true" />
       <div className="noise-overlay" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-10">
-        <Navbar />
-        <main className="w-full max-w-5xl">{renderBody()}</main>
-        <Footer />
+      <div className="relative z-10 px-4 pb-10 pt-4 lg:px-6 lg:pb-12 lg:pt-0">
+        <div className="sticky top-0 z-50 -mx-4 border-b border-[#263f72]/60 bg-[#050914]/88 px-4 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:-mx-6 lg:px-6">
+          <div className="mx-auto flex w-full justify-center">
+            <Navbar />
+          </div>
+        </div>
+
+        <main className="mx-auto mt-6 w-full max-w-[1032px]">{renderBody()}</main>
+
+        <div className="mx-auto mt-6 w-full max-w-[1032px]">
+          <Footer />
+        </div>
       </div>
     </div>
   );

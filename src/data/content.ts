@@ -4,16 +4,12 @@ export const platformGroups = [
     items: [">VITFAST", ">EDMT", ">AUBRAI", ">RIF", ">VITARNA", ">..."]
   },
   {
-    title: "VITADAO",
-    items: [">ARTAN BIO", ">Rubedo.Life", ">Matrix Bio", ">ApoptoSENS", ">Transfidelity", ">..."]
-  },
-  {
-    title: "BIODAO",
-    items: [">Neuron-Gale", ">NootropicsDAO", ">Dalya", ">FatDAO", ">MicroDAO", ">..."]
-  },
-  {
     title: "Research Hub",
     items: [">The Neuromuscular...", ">Standing On Nate...", ">Nonsurgical Trea...", ">Transcriptomic A...", ">..."]
+  },
+  {
+    title: "Pump.science",
+    items: [">$DOCS", ">$OMIGU", ">$OMIDOCS", ">$ART"]
   }
 ] as const;
 
@@ -24,7 +20,7 @@ export const newsItems = [
       "ARTAN is a biotechnology company developing first-in-class interventions to tackle the most frequent nonsense mutations implicated in a wide range of age-related...",
     platform: "VitaDAO",
     field: "Longevity",
-    date: "3h ago",
+    publishedAt: "2026-05-15T18:30:00.000Z",
     score: "4:7"
   },
   {
@@ -33,7 +29,7 @@ export const newsItems = [
       "Autophagy - the mechanism to recycle cellular components - becomes dysregulated with age and is associated with numerous diseases. The Korolchuk Lab, based at Newcastle...",
     platform: "ResearchHub",
     field: "Autophagy",
-    date: "8h ago",
+    publishedAt: "2026-05-15T14:00:00.000Z",
     score: "3:5"
   },
   {
@@ -42,7 +38,7 @@ export const newsItems = [
       "VitaDAO and the Osborne Lab are launching Matrix Bio, a cutting-edge research venture leveraging the anti-cancer...",
     platform: "Molecule",
     field: "Longevity",
-    date: "1d ago",
+    publishedAt: "2026-05-14T09:20:00.000Z",
     score: "5:6"
   }
 ] as const;

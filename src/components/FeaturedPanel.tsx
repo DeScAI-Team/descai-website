@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchReviewFromArweave } from "@/api/reviews";
-import type { Review } from "@/types/review";
+import { DEFAULT_REVIEW_AUTHOR, type Review } from "@/types/review";
 
 type RatingRow = { label: string; value: number | null };
 type FeaturedPanelProps = {
@@ -171,7 +171,7 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
 
         <div className="mb-4 flex flex-wrap items-center gap-4">
           <h2 className="flex-1 text-center">
-            <span className="featured-chip inline-flex">Featured Research</span>
+            <span className="featured-chip inline-flex">Featured Reviews</span>
           </h2>
           {loading && (
             <span className="ml-auto whitespace-nowrap text-xs uppercase tracking-[0.3em] text-white/60">
@@ -220,7 +220,7 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
                   <p className="text-xs uppercase tracking-[0.28em] text-white/48">
                     Reviewed by{" "}
                     <span className="font-semibold normal-case tracking-normal text-[#62a7ff]">
-                      {featuredReview.dao_name ?? "Unknown DAO"}
+                      {featuredReview.dao_name ?? DEFAULT_REVIEW_AUTHOR}
                     </span>
                   </p>
                   {featuredReview.paper_id && (

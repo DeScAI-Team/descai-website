@@ -47,13 +47,13 @@ const ConnectWalletButton = ({ compact = false }: { compact?: boolean }) => {
           clearError();
           setPickerOpen((open) => !open);
         }}
-        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-[#78c6ff]/25 bg-gradient-to-br from-[#4c91ff] to-[#7f35df] font-semibold text-white shadow-[0_12px_30px_rgba(66,119,255,0.28),inset_0_1px_0_rgba(180,215,255,0.18)] transition hover:brightness-110`}
+        className={`${compact ? "w-full px-4 py-3 text-base" : "px-5 py-2.5 text-sm"} rounded-[14px] border border-[#263f72] bg-[#0b1835]/80 font-semibold text-[#9fc3ff] shadow-[inset_0_1px_0_rgba(80,126,205,0.1)] transition hover:border-[#74b6ff]/35 hover:bg-[#13244c] hover:text-[#d5ebff]`}
       >
         Connect Wallet
       </button>
 
       {pickerOpen && (
-        <div className={`${compact ? "right-0 mt-2 w-full" : "right-0 mt-3 w-64"} absolute z-[70] rounded-[16px] border border-[#263f72] bg-[#10192c]/98 p-3 text-left shadow-[0_20px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl`}>
+        <div className={`${compact ? "right-0 mt-2 w-full" : "right-0 mt-3 w-64"} absolute z-[70] rounded-[16px] border border-[#263f72] bg-[#10192c]/80 p-3 text-left shadow-[0_20px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl`}>
           <div className="space-y-2">
             {walletOptions.map((option) => (
               <button
@@ -114,20 +114,23 @@ const Navbar = () => {
   }, [query]);
 
   return (
-    <div className="relative z-50 w-full rounded-[22px] border border-[#35538a]/60 bg-[linear-gradient(135deg,rgba(38,54,106,0.96),rgba(8,13,31,0.96)_45%,rgba(10,15,31,0.98))] p-[1px] shadow-[0_18px_56px_rgba(1,4,18,0.72),0_0_34px_rgba(86,135,255,0.14)]">
-      <header className="rounded-[21px] border border-[#263f72] bg-[#070d20]/84 px-5 py-4 shadow-[inset_0_1px_0_rgba(80,126,205,0.14)] backdrop-blur-xl lg:px-6">
+    <header className="relative z-50 w-full px-5 py-1.5 lg:px-6">
         <div className="relative z-50 flex items-center gap-3 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_220px] lg:items-center lg:gap-5">
           <Link to="/" className="flex items-center gap-2 lg:justify-self-start">
-            <img
-              src="/DeScAI%20logo.jpg"
-              alt="DeScAI logo"
-              className="h-14 w-14 rounded-[16px] border border-[#59d7ff]/30 bg-[#0f2a3d] object-cover shadow-[0_0_24px_rgba(65,194,255,0.22)] lg:h-16 lg:w-16"
-            />
+            <span className="relative isolate inline-flex h-11 w-11 shrink-0 rounded-[14px] border border-[#59d7ff]/30 lg:h-12 lg:w-12 lg:rounded-[16px]">              <span
+                className="pointer-events-none absolute inset-0 z-0 rounded-[inherit] shadow-[0_0_18px_rgba(65,194,255,0.55),0_0_36px_rgba(65,194,255,0.22)]"
+                aria-hidden
+              />
+              <img
+                src="/DeScAILogo.png"
+                alt="DeScAI logo"
+                className="relative z-10 h-full w-full rounded-[inherit] object-contain opacity-95 mix-blend-screen [mask-image:radial-gradient(ellipse_at_center,black_62%,transparent_100%)]"              />
+            </span>
           </Link>
 
         <div className="relative min-w-0 flex-1 lg:col-start-2 lg:w-full">
           <div className="mx-auto w-full max-w-[860px]">
-          <label className="flex min-h-[48px] w-full items-center gap-3 rounded-[14px] border border-[#263b68] bg-[rgba(8,14,34,0.78)] px-4 py-2.5 text-sm text-white/70 shadow-[inset_0_1px_0_rgba(80,126,205,0.12),0_0_24px_rgba(70,113,190,0.1)]">
+          <label className="flex min-h-[36px] w-full items-center gap-3 rounded-[14px] border border-[#263b68] bg-[rgba(8,14,34,0.78)] px-4 py-1.5 text-sm text-white/70 shadow-[inset_0_1px_0_rgba(80,126,205,0.12),0_0_24px_rgba(70,113,190,0.1)]">
             <input
               className="w-full bg-transparent text-white placeholder:text-white/38 focus:outline-none"
               placeholder="Search reviews, platforms, research..."
@@ -227,8 +230,7 @@ const Navbar = () => {
             </nav>
           </div>
         )}
-      </header>
-    </div>
+    </header>
   );
 };
 

@@ -11,6 +11,7 @@ type ArweaveTransaction = {
   blockHeight: number | null;
   timestamp: string | null;
   status: "confirmed" | "pending";
+  tags?: Array<{ name: string; value: string }>;
 };
 
 type ArweaveGraphQlEdge = {
@@ -24,6 +25,7 @@ type ArweaveGraphQlEdge = {
       height: number;
       timestamp: number;
     } | null;
+    tags?: Array<{ name: string; value: string }>;
   };
 };
 
@@ -118,14 +120,27 @@ const UPSTREAM_CACHE_TTL_MS = 5 * 60 * 1000;
 const upstreamCache = new Map<string, CachedJsonResponse>();
 
 const WALLETS = [
-  "-tFrKF2NuT5_X1cNOTHJmZw3xhss0K5WnXl3wYxRYLM"
+  "2-qaBPnv_kkVKcIcZjNympauWg2lepbuYmeEuMA3jls"
   // "Add_More_Wallet_IDs_Here",
 ];
 
+type IndexTagFilter = { name: string; values: string[] };
+
+/** Overview crawls (home sidebars + review index). */
+const INDEX_OVERVIEW_TAG_FILTERS: IndexTagFilter[] = [{ name: "doctype", values: ["overview"] }];
+
+/** Compound reviews do not get overview txs; index them separately. */
+const INDEX_COMPOUND_REVIEW_TAG_FILTERS: IndexTagFilter[] = [
+  { name: "doctype", values: ["review"] },
+  { name: "category", values: ["compounds"] }
+];
+
+const INDEX_TAG_FILTER_SETS = [INDEX_OVERVIEW_TAG_FILTERS, INDEX_COMPOUND_REVIEW_TAG_FILTERS] as const;
+
 // Arweave GraphQL Query
 const GQL_QUERY = `
-  query getTransactions($owners: [String!], $after: String) {
-    transactions(owners: $owners, first: 100, after: $after) {
+  query getTransactions($owners: [String!], $after: String, $tags: [TagFilter!]) {
+    transactions(owners: $owners, tags: $tags, first: 100, after: $after) {
       pageInfo { hasNextPage }
       edges {
         cursor
@@ -133,6 +148,7 @@ const GQL_QUERY = `
           id
           owner { address }
           block { height timestamp }
+          tags { name value }
         }
       }
     }
@@ -300,51 +316,64 @@ const getCachedUpstreamJsonOrFallback = async (cacheKey: string, url: string, fa
   }
 };
 
+const formatTransactionEdge = (edge: ArweaveGraphQlEdge): ArweaveTransaction => {
+  const node = edge.node;
+  const block = node.block;
+  const isConfirmed = block !== null;
+
+  return {
+    txid: node.id,
+    uploaderAddress: node.owner.address,
+    blockHeight: block?.height ?? null,
+    timestamp: block ? new Date(block.timestamp * 1000).toISOString() : null,
+    status: isConfirmed ? "confirmed" : "pending",
+    tags: (node.tags ?? []).map((tag) => ({ name: tag.name, value: tag.value ?? "" }))
+  };
+};
+
+const fetchTransactionsForTagFilters = async (tagFilters: IndexTagFilter[]) => {
+  const transactions: ArweaveTransaction[] = [];
+  let hasNextPage = true;
+  let cursor: string | null = null;
+
+  while (hasNextPage) {
+    const response = (await queryGQL(GQL_QUERY, {
+      gateway: "arweave.net",
+      filters: {
+        owners: WALLETS,
+        after: cursor,
+        tags: tagFilters
+      }
+    })) as ArweaveGraphQlResponse;
+
+    const data = response.data?.transactions;
+    const edges = data?.edges;
+
+    if (!edges || edges.length === 0) break;
+
+    transactions.push(...edges.map(formatTransactionEdge));
+    hasNextPage = Boolean(data.pageInfo?.hasNextPage);
+
+    if (hasNextPage) {
+      cursor = edges[edges.length - 1].cursor;
+    }
+  }
+
+  return transactions;
+};
+
 app.get("/api/index", async (_req: Request, res: Response) => {
   try {
-    let allTransactions: ArweaveTransaction[] = [];
-    let hasNextPage = true;
-    let cursor: string | null = null;
+    const batches = await Promise.all(INDEX_TAG_FILTER_SETS.map((tagFilters) => fetchTransactionsForTagFilters([...tagFilters])));
 
-    // Query all WALLETS transcations, loop with cursor based pagnation enabled
-    while (hasNextPage) {
-      const response = (await queryGQL(GQL_QUERY, {
-        gateway: "arweave.net",
-        filters: {
-          owners: WALLETS,
-          after: cursor
-        }
-      })) as ArweaveGraphQlResponse;
-
-      const data = response.data?.transactions;
-      const edges = data?.edges;
-
-      if (!edges || edges.length === 0) break; //Empty list returned in case results not found (or error)
-
-      const formatted = edges.map((edge) => {
-        const node = edge.node;
-        const block = node.block;
-        const isConfirmed = block !== null;
-
-        return {
-          txid: node.id,
-          uploaderAddress: node.owner.address,
-          blockHeight: block?.height ?? null,
-          timestamp: block ? new Date(block.timestamp * 1000).toISOString() : null,
-          status: isConfirmed ? "confirmed" : "pending"
-        } satisfies ArweaveTransaction;
-      });
-
-      allTransactions = [...allTransactions, ...formatted];
-      hasNextPage = Boolean(data.pageInfo?.hasNextPage);
-
-      if (hasNextPage) {
-        cursor = edges[edges.length - 1].cursor; // Access last element to fetch next page
+    const byTxid = new Map<string, ArweaveTransaction>();
+    for (const batch of batches) {
+      for (const transaction of batch) {
+        byTxid.set(transaction.txid, transaction);
       }
     }
 
-    //Sort: descending timestamp. (Pending transactions go at the top.)
-    allTransactions.sort((a, b) => {
+    const allTransactions = [...byTxid.values()].sort((a, b) => {
       const timeA = a.timestamp ? new Date(a.timestamp).getTime() : Infinity;
       const timeB = b.timestamp ? new Date(b.timestamp).getTime() : Infinity;
       return timeB - timeA;
