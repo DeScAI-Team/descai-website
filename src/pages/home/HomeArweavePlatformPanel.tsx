@@ -38,7 +38,7 @@ const HomeArweavePlatformPanel = ({
   loading,
   error,
   emptyHint,
-  itemsLimit = 8
+  itemsLimit = 20
 }: HomeArweavePlatformPanelProps) => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -112,19 +112,19 @@ const HomeArweavePlatformPanel = ({
                       <div className="mx-2 border-t border-[#263d70]" aria-hidden />
                       <div className="mt-2 flex flex-wrap gap-2">
                       {visibleItems.map((item) => (
-                        <a
+                        <Link
                           key={item.txid}
-                          href={item.href}
-                          target="_blank"
-                          rel="noreferrer"
+                          to={`/review/${item.txid}`}
                           title={item.category ? `${item.name} · ${item.category}` : item.name}
                           className={clsx(
                             "inline-flex max-w-full items-center rounded-full border px-2.5 py-1 text-[0.68rem] font-medium leading-snug shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition",
                             chipPaletteForCategory(item.category)
                           )}
                         >
-                          <span className="truncate">{item.name}</span>
-                        </a>
+                          <span className="truncate">
+                            {item.name ? item.name.charAt(0).toUpperCase() + item.name.slice(1) : item.name}
+                          </span>
+                        </Link>
                       ))}
                       {hasMore ? (
                         <Link

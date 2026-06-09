@@ -22,6 +22,8 @@ export type ReviewInfoSection = {
 };
 
 /**Identifer information for a Review */
+export type ReviewDocType = "overview" | "review";
+
 export type ReviewListItem = {
   id: string;
   txid?: string;
@@ -34,6 +36,7 @@ export type ReviewListItem = {
   compound?: string | null;
   average_score?: number | null;
   featured?: boolean;
+  doctype?: ReviewDocType | null;
 };
 
 /**Dynamically Sized Review that contains specific catogeries, an average score, and general info about an entry. */

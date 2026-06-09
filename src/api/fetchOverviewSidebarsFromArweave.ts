@@ -110,20 +110,71 @@ const pickPublishedIso = (blockTimestampSec: number | null | undefined, tagMap: 
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : fromTags;
 };
 
-const buildArticleUrl = (txid: string, gatewayBase: string, tagMap: Map<string, string>) => {
-  if (tagMap.get("doctype")?.trim().toLowerCase() === "review") {
-    return `/review/${txid}`;
-  }
-
-  return `${gatewayBase}/${txid}`;
+const buildArticleUrl = (txid: string, _gatewayBase: string, _tagMap: Map<string, string>) => {
+  return `/review/${txid}`;
 };
 
-const pickTitle = (txid: string, tagMap: Map<string, string>) =>
-  tagMap.get("name")?.trim() ||
-  tagMap.get("research_name")?.trim() ||
-  tagMap.get("compounds")?.trim() ||
-  tagMap.get("title")?.trim() ||
-  `Item ${txid.slice(0, 6)}…`;
+const TITLE_TAG_KEYS = [
+  "DaoName",
+  "dao_name",
+  "daoName",
+  "dao",
+  "Dao",
+  "name",
+  "Name",
+  "research_name",
+  "ResearchName",
+  "compounds",
+  "Compounds",
+  "title",
+  "Title"
+] as const;
+
+const pickTagTitle = (tagMap: Map<string, string>): string | null => {
+  for (const key of TITLE_TAG_KEYS) {
+    const value = tagMap.get(key)?.trim();
+    if (value) return value;
+  }
+  const lowerMap = new Map<string, string>();
+  for (const [name, value] of tagMap) {
+    lowerMap.set(name.toLowerCase(), value);
+  }
+  for (const key of TITLE_TAG_KEYS) {
+    const value = lowerMap.get(key.toLowerCase())?.trim();
+    if (value) return value;
+  }
+  return null;
+};
+
+const readDocumentString = (document: unknown, keys: string[]): string | null => {
+  if (!document || typeof document !== "object") return null;
+  const record = document as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+};
+
+const fetchDocumentTitle = async (txid: string, gatewayBase: string, signal?: AbortSignal): Promise<string | null> => {
+  try {
+    const response = await fetch(`${gatewayBase}/${txid}`, { signal });
+    if (!response.ok) return null;
+    const document = (await response.json()) as unknown;
+    return readDocumentString(document, [
+      "dao_name",
+      "dao",
+      "name",
+      "research_name",
+      "compounds",
+      "title"
+    ]);
+  } catch {
+    return null;
+  }
+};
 
 const publishedTime = (iso: string | null): number =>
   iso && Number.isFinite(new Date(iso).getTime()) ? new Date(iso).getTime() : Number.NEGATIVE_INFINITY;
@@ -215,9 +266,19 @@ export async function fetchOverviewSidebarsFromArweave(
 
   const edges = [...edgesByTxid.values()];
 
-  const articles: OverviewArticleRef[] = edges.map((edge) => {
-    const tagMap = tagsToMap(edge.node.tags ?? []);
-    const title = pickTitle(edge.node.id, tagMap);
+  const edgeTagMaps = edges.map((edge) => tagsToMap(edge.node.tags ?? []));
+
+  const documentTitles = await Promise.all(
+    edges.map(async (edge, index) => {
+      const tagTitle = pickTagTitle(edgeTagMaps[index]);
+      if (tagTitle) return null;
+      return fetchDocumentTitle(edge.node.id, gatewayBase, signal);
+    })
+  );
+
+  const articles: OverviewArticleRef[] = edges.map((edge, index) => {
+    const tagMap = edgeTagMaps[index];
+    const title = pickTagTitle(tagMap) ?? documentTitles[index] ?? `Item ${edge.node.id.slice(0, 6)}…`;
     const platform = tagMap.get("platform")?.trim() || "Other";
     const categoryRaw = tagMap.get("category")?.trim();
     const category = categoryRaw && categoryRaw.length > 0 ? categoryRaw : null;

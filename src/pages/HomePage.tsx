@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { useSearchParams } from "react-router-dom";
-import { fetchReviewIndex } from "@/api/arweaveLoader";
+import { fetchFeaturedFromAgentUploads, getCachedFeaturedTxids } from "@/api/fetchFeaturedFromAgentUploads";
 import {
   fetchOverviewSidebarsFromArweave,
   getOverviewAgentAddress,
@@ -22,8 +22,8 @@ const HomePage = () => {
   const [searchParams] = useSearchParams();
   const snapshotsMode = searchParams.get("snapshots") === "1";
 
-  const [featuredTxids, setFeaturedTxids] = useState<string[]>([]);
-  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredTxids, setFeaturedTxids] = useState<string[]>(() => getCachedFeaturedTxids());
+  const [featuredLoading, setFeaturedLoading] = useState(() => getCachedFeaturedTxids().length === 0);
   const [featuredError, setFeaturedError] = useState<string | null>(null);
 
   const [overviewPlatformGroups, setOverviewPlatformGroups] = useState<OverviewPlatformGroup[]>([]);
@@ -44,14 +44,14 @@ const HomePage = () => {
       setFeaturedError(null);
 
       try {
-        const { featuredTxids: rankedTxids } = await fetchReviewIndex();
+        const { featuredTxids: rankedTxids } = await fetchFeaturedFromAgentUploads();
         if (!cancelled) {
           setFeaturedTxids(rankedTxids);
         }
       } catch (error) {
         if (!cancelled) {
           setFeaturedTxids([]);
-          setFeaturedError((error as Error).message || "Failed to load featured research index");
+          setFeaturedError((error as Error).message || "Failed to load featured agent uploads");
         }
       } finally {
         if (!cancelled) {

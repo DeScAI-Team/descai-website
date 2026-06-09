@@ -43,7 +43,7 @@ const HomeArweaveInsightsPanel = ({
             {visible.map((news) => (
               <article key={news.txid} className="flex flex-col gap-2.5 px-3 py-4">
                 <header>
-                  <p className="line-clamp-2 text-[0.875rem] font-semibold leading-snug tracking-wide text-[#b6cffc]">
+                  <p className="line-clamp-2 text-[0.875rem] font-semibold uppercase leading-snug tracking-wide text-[#b6cffc]">
                     {news.title}
                   </p>
                 </header>

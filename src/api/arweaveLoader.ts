@@ -1,4 +1,4 @@
-import { DEFAULT_REVIEW_AUTHOR, type Review, type ReviewCategory, type ReviewInfoSection, type ReviewListItem } from "@/types/review";
+import { DEFAULT_REVIEW_AUTHOR, type Review, type ReviewCategory, type ReviewInfoSection, type ReviewListItem, type ReviewDocType } from "@/types/review";
 
 type ArweaveIndexTransaction = {
   txid?: string;
@@ -28,7 +28,11 @@ const ARWEAVE_GATEWAY_URL = (import.meta.env.VITE_ARWEAVE_GATEWAY_URL ?? "https:
 const FEATURED_REVIEW_DAO = "NootropicsDAO";
 
 let reviewIndexPromise: Promise<ReviewIndexResult> | null = null;
+/** Bump when review mapping shape changes so stale browser-session cache is ignored. */
+const REVIEW_CACHE_VERSION = 2;
 const reviewPromiseCache = new Map<string, Promise<Review>>();
+
+const reviewCacheKey = (txid: string) => `${REVIEW_CACHE_VERSION}:${txid}`;
 
 const readString = (record: ArweaveDocument, keys: string[]): string | null => {
   for (const key of keys) {
@@ -105,19 +109,20 @@ const parseSummary = (
 ) => {
   const tagMap = tagsToMap(tags);
   const title =
-    readString(document, ["name", "title", "research_name"]) ??
+    readString(document, ["name", "title", "research_name", "research_dao", "dao_name"]) ??
     readString(document, ["compounds"]) ??
     tagMap.get("compounds")?.trim() ??
     tagMap.get("research_name")?.trim() ??
     tagMap.get("name")?.trim() ??
-    readString(document, ["dao_name"]) ??
+    tagMap.get("DaoName")?.trim() ??
+    tagMap.get("dao_name")?.trim() ??
     "Untitled Review";
-  const dao_name = readString(document, ["dao_name"]) ?? DEFAULT_REVIEW_AUTHOR;
+  const dao_name = readString(document, ["dao_name", "research_dao", "DaoName"]) ?? DEFAULT_REVIEW_AUTHOR;
   const platform = readString(document, ["platform"]) ?? tagMap.get("platform")?.trim() ?? null;
   const category = readString(document, ["category"]) ?? tagMap.get("category")?.trim() ?? null;
   const compound = readString(document, ["compounds"]) ?? tagMap.get("compounds")?.trim() ?? null;
   const date = readString(document, ["date", "review_date", "created_at"]) ?? fallbackDate ?? new Date(0).toISOString();
-  const average_score = readNumber(document, ["average_score"]);
+  const average_score = readNumber(document, ["composite_score", "average_score"]);
 
   return { txid, title, dao_name, platform, category, compound, date, average_score };
 };
@@ -149,6 +154,18 @@ export async function fetchIndexTransactions(): Promise<ArweaveIndexTransaction[
 export async function fetchArweaveDocument(txid: string): Promise<ArweaveDocument> {
   const response = await fetch(getArweaveDocumentUrl(txid));
   return safeJson<ArweaveDocument>(response, `Failed to fetch Arweave document ${txid}`);
+}
+
+export async function fetchArweaveTransactionTags(txid: string): Promise<ArweaveTag[]> {
+  const query = `query Tx($id: ID!) { transaction(id: $id) { tags { name value } } }`;
+  const response = await fetch(`${ARWEAVE_GATEWAY_URL}/graphql`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ query, variables: { id: txid } })
+  });
+  if (!response.ok) return [];
+  const payload = (await response.json()) as { data?: { transaction?: { tags?: ArweaveTag[] } } };
+  return payload.data?.transaction?.tags ?? [];
 }
 
 export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewIndexResult> {
@@ -271,7 +288,9 @@ const buildInfoSections = (document: ArweaveDocument): ReviewInfoSection[] => {
     "platform",
     "category",
     "categories",
-    "review_statement"
+    "review_statement",
+    "research_dao",
+    "evidence_audit"
   ]);
 
   return Object.entries(document)
@@ -291,42 +310,109 @@ const buildInfoSections = (document: ArweaveDocument): ReviewInfoSection[] => {
     });
 };
 
-const mapDocumentToReview = (txid: string, document: ArweaveDocument): Review => ({
-  id: txid,
-  txid,
-  title:
-    readString(document, ["name", "title", "research_name"]) ??
-    readString(document, ["compounds"]) ??
-    readString(document, ["dao_name"]) ??
-    "Untitled Review",
-  created_at: readString(document, ["date", "review_date", "created_at"]) ?? new Date().toISOString(),
-  paper_id: txid,
-  dao_name: readString(document, ["dao_name"]) ?? DEFAULT_REVIEW_AUTHOR,
-  average_score: readNumber(document, ["average_score", "composite_score"]),
-  review_statement: readString(document, ["review_statement"]),
-  categories: buildCategories(document),
-  info: buildInfoSections(document)
-});
+const TAG_TITLE_KEYS = ["DaoName", "dao_name", "daoName", "Dao", "dao", "Name", "name", "ResearchName", "research_name", "Compounds", "compounds", "Title", "title"];
+const TAG_DAO_KEYS = ["DaoName", "dao_name", "daoName", "Dao", "dao"];
+const TAG_PLATFORM_KEYS = ["platform", "Platform"];
+const TAG_CATEGORY_KEYS = ["category", "Category"];
+const TAG_COMPOUND_KEYS = ["compounds", "Compounds", "compound", "Compound", "research_name", "ResearchName"];
+
+const DOC_TYPE_TAG_KEYS = ["doctype", "DocType", "doc_type", "Doc_Type"];
+
+const lookupTag = (tagMap: Map<string, string>, keys: string[]): string | null => {
+  for (const key of keys) {
+    const value = tagMap.get(key)?.trim();
+    if (value) return value;
+  }
+  const lower = new Map<string, string>();
+  for (const [name, value] of tagMap) {
+    lower.set(name.toLowerCase(), value);
+  }
+  for (const key of keys) {
+    const value = lower.get(key.toLowerCase())?.trim();
+    if (value) return value;
+  }
+  return null;
+};
+
+export const parseDocTypeFromTags = (tags: ArweaveTag[]): ReviewDocType | null => {
+  const value = lookupTag(tagsToMap(tags), DOC_TYPE_TAG_KEYS)?.toLowerCase();
+  if (value === "overview" || value === "review") {
+    return value;
+  }
+  return null;
+};
+
+export const buildProjectMatchKeyFromTags = (tags: ArweaveTag[]): string | null => {
+  const tagMap = tagsToMap(tags);
+  const platform = (lookupTag(tagMap, TAG_PLATFORM_KEYS) ?? "").trim().toLowerCase();
+  const title = lookupTag(tagMap, TAG_TITLE_KEYS)?.trim().toLowerCase();
+  if (!title) return null;
+  return `${platform}::${title}`;
+};
+
+const mapDocumentToReview = (
+  txid: string,
+  document: ArweaveDocument,
+  tags: ArweaveTag[] = []
+): Review => {
+  const tagMap = tagsToMap(tags);
+  return {
+    id: txid,
+    txid,
+    title:
+      readString(document, ["name", "title", "research_name", "research_dao"]) ??
+      readString(document, ["compounds"]) ??
+      readString(document, ["dao_name", "DaoName"]) ??
+      lookupTag(tagMap, TAG_TITLE_KEYS) ??
+      "Untitled Review",
+    created_at:
+      readString(document, ["date", "review_date", "created_at"]) ??
+      lookupTag(tagMap, ["date", "Date", "published", "published_at"]) ??
+      new Date().toISOString(),
+    paper_id: txid,
+    dao_name:
+      readString(document, ["dao_name", "research_dao", "DaoName"]) ??
+      lookupTag(tagMap, TAG_DAO_KEYS) ??
+      DEFAULT_REVIEW_AUTHOR,
+    platform: readString(document, ["platform"]) ?? lookupTag(tagMap, TAG_PLATFORM_KEYS) ?? null,
+    category: readString(document, ["category"]) ?? lookupTag(tagMap, TAG_CATEGORY_KEYS) ?? null,
+    compound:
+      readString(document, ["compounds", "compound", "compound_token", "research_name"]) ??
+      lookupTag(tagMap, TAG_COMPOUND_KEYS) ??
+      null,
+    doctype: parseDocTypeFromTags(tags),
+    average_score: readNumber(document, ["average_score", "composite_score"]),
+    review_statement: readString(document, ["review_statement"]),
+    categories: buildCategories(document),
+    info: buildInfoSections(document)
+  };
+};
 
 export async function fetchReviewFromArweave(txid: string, forceRefresh = false): Promise<Review> {
+  const cacheKey = reviewCacheKey(txid);
   if (!forceRefresh) {
-    const cached = reviewPromiseCache.get(txid);
+    const cached = reviewPromiseCache.get(cacheKey);
     if (cached) {
       return cached;
     }
+  } else {
+    reviewPromiseCache.delete(cacheKey);
   }
 
   const promise = (async () => {
-    const document = await fetchArweaveDocument(txid);
-    return mapDocumentToReview(txid, document);
+    const [document, tags] = await Promise.all([
+      fetchArweaveDocument(txid),
+      fetchArweaveTransactionTags(txid).catch(() => [] as ArweaveTag[])
+    ]);
+    return mapDocumentToReview(txid, document, tags);
   })();
 
-  reviewPromiseCache.set(txid, promise);
+  reviewPromiseCache.set(cacheKey, promise);
 
   try {
     return await promise;
   } catch (error) {
-    reviewPromiseCache.delete(txid);
+    reviewPromiseCache.delete(cacheKey);
     throw error;
   }
 }
