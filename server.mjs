@@ -1,8 +1,10 @@
 import express from "express";
-import cron from "node-cron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { run } from "./jobs/deploy-test.mjs";
+import { loadLocalEnv } from "./jobs/lib/env.mjs";
+import { startDeployScheduler, stopDeployScheduler } from "./jobs/deploy-cron.mjs";
+
+loadLocalEnv();
 
 const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), "dist");
 const app = express();
@@ -13,6 +15,14 @@ app.listen(process.env.PORT ?? 8080, () =>
   console.log(`listening on ${process.env.PORT ?? 8080}`)
 );
 
-cron.schedule("0 0 * * 0", () => {
-  run().catch(err => console.error("[cron] deploy failed:", err));
-});
+if (process.env.AKASH_MNEMONIC?.trim()) {
+  startDeployScheduler({ embedded: true });
+} else {
+  console.log("[deploy-cron] AKASH_MNEMONIC not set — deploy scheduler disabled");
+}
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    stopDeployScheduler(signal);
+  });
+}
