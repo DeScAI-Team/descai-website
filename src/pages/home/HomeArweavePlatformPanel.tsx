@@ -23,6 +23,12 @@ const chipPalettes = [
   "border-[#4a5f94]/50 bg-[#0c1428]/90 text-[#7ea8ff] hover:border-[#5a7ec8]/65 hover:bg-[#101c38]/95 hover:text-[#a8c4ff]"
 ] as const;
 
+const normalizePlatformKey = (platform: string) => platform.trim().toLowerCase().replace(/[.\s_-]/g, "");
+
+const isResearchHubPlatform = (platform: string) => normalizePlatformKey(platform) === "researchhub";
+
+const defaultGroupOpen = (platform: string) => !isResearchHubPlatform(platform);
+
 const chipPaletteForCategory = (category: string | null) => {
   if (!category) return chipPalettes[0];
   let hash = 0;
@@ -46,7 +52,7 @@ const HomeArweavePlatformPanel = ({
     setOpenGroups(
       groups.reduce(
         (acc, group) => {
-          acc[group.platform] = false;
+          acc[group.platform] = defaultGroupOpen(group.platform);
           return acc;
         },
         {} as Record<string, boolean>

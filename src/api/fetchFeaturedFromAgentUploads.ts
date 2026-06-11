@@ -1,5 +1,5 @@
 import { fetchArweaveDocument } from "@/api/arweaveLoader";
-import { prefetchStructureImagesFromTags } from "@/api/pubchem";
+import { prefetchReviewVisualsFromTagEntries } from "@/api/resolveReviewVisual";
 import { getArweaveGatewayBaseUrl, getOverviewAgentAddress } from "@/api/fetchOverviewSidebarsFromArweave";
 
 type ArweaveTag = { name: string; value: string };
@@ -27,7 +27,9 @@ type ArweaveDocument = Record<string, unknown>;
 
 export type FeaturedUploadSummary = {
   txid: string;
+  platform: string;
   composite_score: number | null;
+  null_category_count: number;
   review_date: string | null;
   published_at: string | null;
 };
@@ -37,9 +39,12 @@ export type FeaturedIndexResult = {
   summaries: FeaturedUploadSummary[];
 };
 
-const FEATURED_LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
-const FEATURED_CANDIDATE_LIMIT = 40;
-const FEATURED_CACHE_TOP_N = 5;
+const FEATURED_CAROUSEL_SIZE = 6;
+const FEATURED_PER_PLATFORM = 2;
+const FEATURED_CANDIDATES_PER_PLATFORM = 20;
+const FEATURED_MOLECULE_CANDIDATE_LIMIT = 50;
+const FEATURED_MAX_GRAPHQL_PAGES = 6;
+const FEATURED_PLATFORMS = ["Molecule", "PumpScience", "ResearchHub"] as const;
 
 const FEATURED_REVIEW_TAG_FILTERS = [{ name: "doctype", values: ["review"] }] as const;
 
@@ -98,23 +103,89 @@ const readString = (record: ArweaveDocument, keys: string[]): string | null => {
 const publishedTime = (iso: string | null): number =>
   iso && Number.isFinite(new Date(iso).getTime()) ? new Date(iso).getTime() : Number.NEGATIVE_INFINITY;
 
-const compareByCompositeScore = (left: FeaturedUploadSummary, right: FeaturedUploadSummary) => {
+const compareFeaturedSummaries = (left: FeaturedUploadSummary, right: FeaturedUploadSummary) => {
   const scoreDelta = (right.composite_score ?? Number.NEGATIVE_INFINITY) - (left.composite_score ?? Number.NEGATIVE_INFINITY);
   if (scoreDelta !== 0) {
     return scoreDelta;
   }
+
+  const nullDelta = left.null_category_count - right.null_category_count;
+  if (nullDelta !== 0) {
+    return nullDelta;
+  }
+
   return publishedTime(right.published_at) - publishedTime(left.published_at);
 };
 
-const fetchRecentReviewEdges = async (agentAddress: string, signal?: AbortSignal) => {
+const readPlatformFromTags = (tags: ArweaveTag[]): string | null => {
+  for (const tag of tags) {
+    if (tag.name?.toLowerCase() === "platform" && tag.value?.trim()) {
+      return tag.value.trim();
+    }
+  }
+  return null;
+};
+
+const normalizePlatformKey = (value: string) => value.trim().toLowerCase().replace(/[.\s_-]/g, "");
+
+const canonicalFeaturedPlatform = (raw: string | null | undefined): (typeof FEATURED_PLATFORMS)[number] | null => {
+  if (!raw?.trim()) return null;
+  const key = normalizePlatformKey(raw);
+  return FEATURED_PLATFORMS.find((platform) => normalizePlatformKey(platform) === key) ?? null;
+};
+
+const countNullCategoryScores = (document: ArweaveDocument): number => {
+  const rawCategories = document.categories;
+  if (!rawCategories || typeof rawCategories !== "object" || Array.isArray(rawCategories)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let nullCount = 0;
+  for (const value of Object.values(rawCategories as Record<string, unknown>)) {
+    if (!value || typeof value !== "object") {
+      nullCount += 1;
+      continue;
+    }
+
+    if (readNumber(value as ArweaveDocument, ["score"]) === null) {
+      nullCount += 1;
+    }
+  }
+
+  return nullCount;
+};
+
+const pickTopReviewsPerPlatform = (ranked: FeaturedUploadSummary[]): FeaturedUploadSummary[] => {
+  const byPlatform = new Map<string, FeaturedUploadSummary[]>();
+
+  for (const summary of ranked) {
+    const platform = canonicalFeaturedPlatform(summary.platform);
+    if (!platform) continue;
+
+    const list = byPlatform.get(platform) ?? [];
+    list.push(summary);
+    byPlatform.set(platform, list);
+  }
+
+  const picked: FeaturedUploadSummary[] = [];
+
+  for (const platform of FEATURED_PLATFORMS) {
+    const summaries = [...(byPlatform.get(platform) ?? [])].sort(compareFeaturedSummaries);
+    picked.push(...summaries.slice(0, FEATURED_PER_PLATFORM));
+  }
+
+  return picked.slice(0, FEATURED_CAROUSEL_SIZE);
+};
+
+const fetchReviewEdges = async (agentAddress: string, signal?: AbortSignal) => {
   const gatewayBase = getArweaveGatewayBaseUrl();
   const graphqlUrl = `${gatewayBase}/graphql`;
-  const cutoffMs = Date.now() - FEATURED_LOOKBACK_MS;
-  const recentEdges: GqlEdge[] = [];
+  const edges: GqlEdge[] = [];
   let cursor: string | null = null;
   let hasNextPage = true;
+  let pagesFetched = 0;
 
-  while (hasNextPage) {
+  while (hasNextPage && pagesFetched < FEATURED_MAX_GRAPHQL_PAGES) {
     const response = await fetch(graphqlUrl, {
       method: "POST",
       headers: {
@@ -148,43 +219,47 @@ const fetchRecentReviewEdges = async (agentAddress: string, signal?: AbortSignal
       break;
     }
 
-    let reachedOlderThanWindow = false;
-
-    for (const edge of batch) {
-      const blockTimestampSec = edge.node.block?.timestamp;
-      if (typeof blockTimestampSec !== "number" || !Number.isFinite(blockTimestampSec)) {
-        continue;
-      }
-
-      const publishedMs = blockTimestampSec * 1000;
-      if (publishedMs < cutoffMs) {
-        reachedOlderThanWindow = true;
-        continue;
-      }
-
-      recentEdges.push(edge);
-    }
+    edges.push(...batch);
 
     hasNextPage = Boolean(page?.pageInfo?.hasNextPage);
     cursor = batch[batch.length - 1]?.cursor ?? null;
+    pagesFetched += 1;
 
-    if (reachedOlderThanWindow || !hasNextPage || !cursor) {
+    if (!hasNextPage || !cursor) {
       break;
     }
   }
 
-  return recentEdges.sort((left, right) => {
-    const leftTime = left.node.block?.timestamp ?? 0;
-    const rightTime = right.node.block?.timestamp ?? 0;
-    return rightTime - leftTime;
-  });
+  return edges;
+};
+
+const selectCandidateEdgesByPlatform = (edges: GqlEdge[]): GqlEdge[] => {
+  const selected: GqlEdge[] = [];
+  const seen = new Set<string>();
+
+  for (const platform of FEATURED_PLATFORMS) {
+    const candidateLimit = platform === "Molecule" ? FEATURED_MOLECULE_CANDIDATE_LIMIT : FEATURED_CANDIDATES_PER_PLATFORM;
+    const matches = edges
+      .filter(
+        (edge) => canonicalFeaturedPlatform(readPlatformFromTags(edge.node.tags ?? [])) === platform
+      )
+      .sort((left, right) => (right.node.block?.timestamp ?? 0) - (left.node.block?.timestamp ?? 0))
+      .slice(0, candidateLimit);
+
+    for (const edge of matches) {
+      if (!seen.has(edge.node.id)) {
+        selected.push(edge);
+        seen.add(edge.node.id);
+      }
+    }
+  }
+
+  return selected;
 };
 
 const buildFeaturedSummaries = async (edges: GqlEdge[]): Promise<FeaturedUploadSummary[]> => {
-  const candidates = edges.slice(0, FEATURED_CANDIDATE_LIMIT);
-
   const settled = await Promise.allSettled(
-    candidates.map(async (edge) => {
+    edges.map(async (edge) => {
       const document = await fetchArweaveDocument(edge.node.id);
       const blockTimestampSec = edge.node.block?.timestamp;
       const published_at =
@@ -192,9 +267,14 @@ const buildFeaturedSummaries = async (edges: GqlEdge[]): Promise<FeaturedUploadS
           ? new Date(blockTimestampSec * 1000).toISOString()
           : null;
 
+      const platform = readPlatformFromTags(edge.node.tags ?? []) ?? readString(document, ["platform"]) ?? "Other";
+      const composite_score = readNumber(document, ["composite_score", "average_score"]);
+
       return {
         txid: edge.node.id,
-        composite_score: readNumber(document, ["composite_score", "average_score"]),
+        platform,
+        composite_score,
+        null_category_count: countNullCategoryScores(document),
         review_date: readString(document, ["review_date", "date", "created_at"]),
         published_at
       } satisfies FeaturedUploadSummary;
@@ -202,10 +282,10 @@ const buildFeaturedSummaries = async (edges: GqlEdge[]): Promise<FeaturedUploadS
   );
 
   return settled
-    .filter((result): result is PromiseFulfilledResult<FeaturedUploadSummary> => result.status === "fulfilled")
+    .filter((result): result is PromiseFulfilledResult<FeaturedUploadSummary | null> => result.status === "fulfilled")
     .map((result) => result.value)
-    .filter((summary) => summary.composite_score !== null)
-    .sort(compareByCompositeScore);
+    .filter((summary): summary is FeaturedUploadSummary => summary !== null && summary.composite_score !== null)
+    .sort(compareFeaturedSummaries);
 };
 
 const emptyFeaturedResult = (): FeaturedIndexResult => ({
@@ -218,8 +298,9 @@ export function getCachedFeaturedTxids(): string[] {
 }
 
 /**
- * Ranks the newest agent review uploads from the last two weeks by composite_score.
- * Only the newest 40 candidates are scored. The top five txids are kept in memory for the session.
+ * Scores recent agent reviews per platform and returns six carousel txids:
+ * top two composite_score reviews each for Molecule, PumpScience, and ResearchHub.
+ * Picks favor highest composite_score, then fewest null category scores.
  */
 export async function fetchFeaturedFromAgentUploads(
   forceRefresh = false,
@@ -239,19 +320,20 @@ export async function fetchFeaturedFromAgentUploads(
       return emptyFeaturedResult();
     }
 
-    const edges = await fetchRecentReviewEdges(agentAddress, signal);
-    if (!edges.length) {
+    const edges = await fetchReviewEdges(agentAddress, signal);
+    const candidateEdges = selectCandidateEdgesByPlatform(edges);
+    if (!candidateEdges.length) {
       return emptyFeaturedResult();
     }
 
-    const ranked = await buildFeaturedSummaries(edges);
-    const topSummaries = ranked.slice(0, FEATURED_CACHE_TOP_N);
+    const ranked = await buildFeaturedSummaries(candidateEdges);
+    const topSummaries = pickTopReviewsPerPlatform(ranked);
     const topTxids = new Set(topSummaries.map((summary) => summary.txid));
     const topTagEntries = edges
       .filter((edge) => topTxids.has(edge.node.id))
       .map((edge) => ({ txid: edge.node.id, tags: edge.node.tags ?? [] }));
 
-    prefetchStructureImagesFromTags(topTagEntries);
+    prefetchReviewVisualsFromTagEntries(topTagEntries);
 
     const result: FeaturedIndexResult = {
       featuredTxids: topSummaries.map((summary) => summary.txid),

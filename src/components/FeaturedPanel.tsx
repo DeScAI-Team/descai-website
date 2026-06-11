@@ -1,15 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import ReviewVisual from "@/components/ReviewVisual";
+import { isPumpScienceReview } from "@/api/pubchem";
 import {
-  getCachedStructureUrlsForTxids,
-  isPumpScienceReview,
-  prefetchPumpScienceStructureImages
-} from "@/api/pubchem";
+  getCachedReviewVisualForTxid,
+  getCachedReviewVisualsForTxids,
+  resolveReviewVisual,
+  type ReviewVisualResult
+} from "@/api/resolveReviewVisual";
 import { fetchReviewFromArweave } from "@/api/reviews";
 import { DEFAULT_REVIEW_AUTHOR, type Review } from "@/types/review";
 
-type RatingRow = { label: string; value: number | null };
+type RatingRow = { label: string; value: number };
 type FeaturedPanelProps = {
   featuredTxids: string[];
   sourceLoading?: boolean;
@@ -76,8 +78,9 @@ const isSingleLineCategoryLabel = (label: string) => label.trim().toLowerCase() 
 
 const buildRatings = (review: Review): RatingRow[] =>
   (review.categories ?? [])
-    .slice(0, 5)
-    .map((category) => ({ label: category.label, value: normalizeScore(category.score) }));
+    .map((category) => ({ label: category.label, value: normalizeScore(category.score) }))
+    .filter((row): row is RatingRow => row.value !== null)
+    .slice(0, 5);
 
 type MetaStatIconType = "published" | "score" | "sections";
 
@@ -130,9 +133,17 @@ const SkeletonCard = () => (
   </article>
 );
 
-const FeaturedReviewCard = ({ review, structureUrl }: { review: Review; structureUrl?: string | null }) => {
+const FeaturedReviewCard = ({
+  review,
+  visual,
+  imageFetchPriority = "auto"
+}: {
+  review: Review;
+  visual?: ReviewVisualResult;
+  imageFetchPriority?: "high" | "low" | "auto";
+}) => {
   const ratings = useMemo(() => buildRatings(review), [review]);
-  const hasRatings = ratings.some(({ value }) => value !== null);
+  const hasRatings = ratings.length > 0;
   const overviewText = getNarrative(review);
   const average = averageScore(review);
 
@@ -147,7 +158,13 @@ const FeaturedReviewCard = ({ review, structureUrl }: { review: Review; structur
       <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-[#7e47ff]/16 blur-[90px]" aria-hidden="true" />
 
       <div className="relative grid gap-5 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
-        <ReviewVisual structureUrl={structureUrl} badge="featured" expectStructure={isPumpScienceReview(review)} />
+        <ReviewVisual
+          imageUrl={visual?.url ?? null}
+          visualMode={visual?.mode ?? (isPumpScienceReview(review) ? "structure" : "cover")}
+          badge="featured"
+          expectImage={!visual?.url}
+          fetchPriority={imageFetchPriority}
+        />
 
         <header className="min-w-0 space-y-3 md:self-center">
           <h3
@@ -207,41 +224,39 @@ const FeaturedReviewCard = ({ review, structureUrl }: { review: Review; structur
         </Link>
       </section>
 
-      {hasRatings ? (
-        <div className="relative mt-6 grid grid-cols-2 gap-5 border-t border-[#263d70] pt-6 md:grid-cols-5">
-          {ratings.map(({ label, value }, index) => {
-            const arcColor = ratingColors[index % ratingColors.length] ?? "#59b8ff";
-            const angle = (value ?? 0) * 3.6;
-            return (
-              <div
-                key={label}
-                className="flex flex-col items-center gap-3 text-xs font-semibold uppercase tracking-wide text-white/58"
-              >
-                <span
-                  className={`text-center text-white/70 ${isSingleLineCategoryLabel(label) ? "md:whitespace-nowrap" : ""}`}
-                >
-                  {label.toUpperCase()}
-                </span>
+      {hasRatings && (
+        <div className="relative mt-6 border-t border-[#263d70] pt-6">
+          <div className="flex flex-wrap justify-center gap-x-10 gap-y-5">
+            {ratings.map(({ label, value }, index) => {
+              const arcColor = ratingColors[index % ratingColors.length] ?? "#59b8ff";
+              const angle = value * 3.6;
+              return (
                 <div
-                  className="relative h-28 w-28 rounded-full shadow-[0_0_22px_rgba(87,136,255,0.1)]"
-                  style={{
-                    background:
-                      `radial-gradient(circle at center, #101936 63%, transparent 64%), ` +
-                      `conic-gradient(${arcColor} ${angle}deg, rgba(80,126,205,0.18) 0)`
-                  }}
+                  key={label}
+                  className="flex flex-col items-center gap-3 text-xs font-semibold uppercase tracking-wide text-white/58"
                 >
-                  <div className="absolute inset-[14px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-[1.15rem] font-semibold text-white">
-                    {value !== null ? value : "—"}
-                    {value !== null && <span className="text-[0.65rem] font-normal text-white/60">%</span>}
+                  <span
+                    className={`text-center text-white/70 ${isSingleLineCategoryLabel(label) ? "md:whitespace-nowrap" : ""}`}
+                  >
+                    {label.toUpperCase()}
+                  </span>
+                  <div
+                    className="relative h-28 w-28 rounded-full shadow-[0_0_22px_rgba(87,136,255,0.1)]"
+                    style={{
+                      background:
+                        `radial-gradient(circle at center, #101936 63%, transparent 64%), ` +
+                        `conic-gradient(${arcColor} ${angle}deg, rgba(80,126,205,0.18) 0)`
+                    }}
+                  >
+                    <div className="absolute inset-[14px] flex flex-col items-center justify-center rounded-full bg-[#111936] text-[1.15rem] font-semibold text-white">
+                      {value}
+                      <span className="text-[0.65rem] font-normal text-white/60">%</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-[#263f72] bg-[#111936] px-4 py-3 text-sm text-white/70">
-          This review does not include category score breakdowns yet.
+              );
+            })}
+          </div>
         </div>
       )}
     </article>
@@ -252,23 +267,45 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
   const [detailedReviews, setDetailedReviews] = useState<Review[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [structureUrls, setStructureUrls] = useState<Record<string, string>>(() =>
-    getCachedStructureUrlsForTxids(featuredTxids)
+  const [reviewVisuals, setReviewVisuals] = useState<Record<string, ReviewVisualResult>>(() =>
+    getCachedReviewVisualsForTxids(featuredTxids)
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number | undefined>(undefined);
+  const slideRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const updateViewportHeight = useCallback(() => {
+    const slide = slideRefs.current[activeIndex];
+    if (slide) {
+      setViewportHeight(slide.getBoundingClientRect().height);
+    }
+  }, [activeIndex]);
+
+  useEffect(() => {
+    updateViewportHeight();
+  }, [updateViewportHeight, detailedReviews]);
+
+  useEffect(() => {
+    const slide = slideRefs.current[activeIndex];
+    if (!slide) return;
+
+    const observer = new ResizeObserver(() => updateViewportHeight());
+    observer.observe(slide);
+    return () => observer.disconnect();
+  }, [activeIndex, updateViewportHeight, detailedReviews]);
 
   useEffect(() => {
     if (!featuredTxids.length) {
       setDetailedReviews([]);
-      setStructureUrls({});
+      setReviewVisuals({});
       setDetailLoading(false);
       setDetailError(null);
       setActiveIndex(0);
       return;
     }
 
-    setStructureUrls((current) => ({ ...getCachedStructureUrlsForTxids(featuredTxids), ...current }));
+    setReviewVisuals((current) => ({ ...getCachedReviewVisualsForTxids(featuredTxids), ...current }));
 
     let cancelled = false;
 
@@ -279,6 +316,7 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
 
       try {
         const settled = await Promise.allSettled(featuredTxids.map((txid) => fetchReviewFromArweave(txid)));
+
         const reviews = settled
           .map((result, index) => {
             if (result.status === "fulfilled") {
@@ -295,9 +333,15 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
 
         if (!cancelled) {
           setDetailedReviews(reviews);
-          const urls = await prefetchPumpScienceStructureImages(reviews);
+
+          const visuals: Record<string, ReviewVisualResult> = {};
+          for (const review of reviews) {
+            if (cancelled) break;
+            visuals[review.id] = await resolveReviewVisual(review);
+          }
+
           if (!cancelled) {
-            setStructureUrls((current) => ({ ...current, ...urls }));
+            setReviewVisuals((current) => ({ ...current, ...visuals }));
           }
         }
       } catch (err) {
@@ -312,6 +356,30 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
       cancelled = true;
     };
   }, [featuredTxids]);
+
+  useEffect(() => {
+    const review = detailedReviews[activeIndex];
+    if (!review) {
+      return;
+    }
+
+    const cached = getCachedReviewVisualForTxid(review.id);
+    if (cached?.url) {
+      setReviewVisuals((current) => (current[review.id] ? current : { ...current, [review.id]: cached }));
+      return;
+    }
+
+    let cancelled = false;
+    void resolveReviewVisual(review).then((visual) => {
+      if (!cancelled && visual.url) {
+        setReviewVisuals((current) => ({ ...current, [review.id]: visual }));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeIndex, detailedReviews]);
 
   const slideCount = detailedReviews.length;
   const hasMultipleSlides = slideCount > 1;
@@ -390,14 +458,28 @@ const FeaturedPanel = ({ featuredTxids, sourceLoading = false, sourceError = nul
               }
             }}
           >
-            <div className="overflow-hidden">
+            <div
+              className="overflow-hidden transition-[height] duration-500 ease-in-out"
+              style={viewportHeight !== undefined ? { height: viewportHeight } : undefined}
+            >
               <div
-                className="flex transition-transform duration-500 ease-in-out"
+                className="flex items-start transition-transform duration-500 ease-in-out"
                 style={{ transform: `translateX(-${activeIndex * 100}%)` }}
               >
-                {detailedReviews.map((review) => (
-                  <div key={review.id} className="w-full shrink-0" aria-hidden={review.id !== detailedReviews[activeIndex]?.id}>
-                    <FeaturedReviewCard review={review} structureUrl={structureUrls[review.id] ?? null} />
+                {detailedReviews.map((review, index) => (
+                  <div
+                    key={review.id}
+                    ref={(node) => {
+                      slideRefs.current[index] = node;
+                    }}
+                    className="w-full shrink-0"
+                    aria-hidden={index !== activeIndex}
+                  >
+                    <FeaturedReviewCard
+                      review={review}
+                      visual={reviewVisuals[review.id]}
+                      imageFetchPriority={index === activeIndex ? "high" : "low"}
+                    />
                   </div>
                 ))}
               </div>

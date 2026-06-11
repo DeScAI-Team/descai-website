@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getCachedStructureUrlForTxid, isPumpScienceReview, resolvePumpScienceStructureImage } from "@/api/pubchem";
+import { isPumpScienceReview } from "@/api/pubchem";
+import { getCachedReviewVisualForTxid, resolveReviewVisual, type ReviewVisualResult } from "@/api/resolveReviewVisual";
 import { resolvePairedDocumentTxids, type PairedDocumentTxids } from "@/api/reviewDocumentPairs";
 import { fetchReviewFromArweave } from "@/api/reviews";
 import Footer from "@/components/Footer";
@@ -292,8 +293,8 @@ const ReviewPage = () => {
   const navigate = useNavigate();
   const { address, isConnected, walletType } = useWallet();
   const [review, setReview] = useState<Review | null>(null);
-  const [structureUrl, setStructureUrl] = useState<string | null>(() =>
-    id ? getCachedStructureUrlForTxid(id) : null
+  const [reviewVisual, setReviewVisual] = useState<ReviewVisualResult | null>(() =>
+    id ? getCachedReviewVisualForTxid(id) : null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -317,7 +318,7 @@ const ReviewPage = () => {
       setLoading(true);
       setError(null);
       setPairedTxids({ docType: null, overviewTxid: null, reviewTxid: null });
-      setStructureUrl(id ? getCachedStructureUrlForTxid(id) : null);
+      setReviewVisual(id ? getCachedReviewVisualForTxid(id) : null);
       try {
         const pairs = await resolvePairedDocumentTxids(id);
         const allowReview = (location.state as { allowReview?: boolean } | null)?.allowReview === true;
@@ -337,14 +338,9 @@ const ReviewPage = () => {
         if (!cancelled) {
           setReview(fetched);
           setPairedTxids(pairs);
-          const cached = getCachedStructureUrlForTxid(id);
-          if (cached) {
-            setStructureUrl(cached);
-            return;
-          }
-          const url = await resolvePumpScienceStructureImage(fetched);
+          const visual = await resolveReviewVisual(fetched);
           if (!cancelled) {
-            setStructureUrl(url);
+            setReviewVisual(visual);
           }
         }
       } catch (err) {
@@ -534,9 +530,10 @@ const ReviewPage = () => {
 
           <div className="relative grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
             <ReviewVisual
-              structureUrl={structureUrl}
+              imageUrl={reviewVisual?.url ?? null}
+              visualMode={reviewVisual?.mode ?? (isPumpScienceReview(review) ? "structure" : "cover")}
               badge="on-chain"
-              expectStructure={isPumpScienceReview(review)}
+              expectImage={!reviewVisual?.url}
             />
 
             <div className="min-w-0 space-y-4">

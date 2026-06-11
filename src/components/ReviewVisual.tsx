@@ -1,59 +1,86 @@
 import React, { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import type { ReviewVisualMode } from "@/api/reviewVisualMatcher";
 
 type ReviewVisualBadge = "featured" | "on-chain";
 
 type ReviewVisualProps = {
-  structureUrl?: string | null;
+  imageUrl?: string | null;
+  visualMode?: ReviewVisualMode;
   badge?: ReviewVisualBadge;
-  /** PumpScience compound reviews: show white shell while the structure image loads. */
-  expectStructure?: boolean;
+  /** Show loading shell while an image is expected but not yet available. */
+  expectImage?: boolean;
+  fetchPriority?: "high" | "low" | "auto";
 };
 
 const ReviewVisual = ({
-  structureUrl,
+  imageUrl,
+  visualMode = "structure",
   badge = "featured",
-  expectStructure = false
+  expectImage = false,
+  fetchPriority = "auto"
 }: ReviewVisualProps) => {
   const [imageFailed, setImageFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  const isCover = visualMode === "cover";
+  const useImageShell = expectImage || Boolean(imageUrl);
+  const showImage = Boolean(imageUrl) && !imageFailed;
+  const pendingImage = expectImage && !imageUrl && !imageFailed;
+
   useEffect(() => {
     setImageFailed(false);
     setImageLoaded(false);
-  }, [structureUrl]);
+  }, [imageUrl]);
 
   useEffect(() => {
     const img = imgRef.current;
     if (img?.complete && img.naturalWidth > 0) {
       setImageLoaded(true);
     }
-  }, [structureUrl]);
-
-  const useStructureShell = expectStructure || Boolean(structureUrl);
-  const showImage = Boolean(structureUrl) && !imageFailed;
+  }, [imageUrl]);
 
   return (
     <div
       className={clsx(
         "featured-visual min-h-[190px] overflow-hidden rounded-[18px] border border-[#4867af]/45 shadow-[0_20px_44px_rgba(0,0,0,0.34)]",
-        useStructureShell && "featured-visual--structure"
+        useImageShell && !isCover && "featured-visual--structure"
       )}
     >
-      {showImage && structureUrl && (
-        <img
-          ref={imgRef}
-          src={structureUrl}
-          alt=""
+      {pendingImage && (
+        <div
           className={clsx(
-            "absolute inset-0 z-[1] h-full w-full bg-[#f4f7ff] object-contain p-3 transition-opacity duration-300",
-            imageLoaded ? "opacity-100" : "opacity-0"
+            "absolute inset-0 z-[1] animate-pulse",
+            isCover ? "bg-[#1a2247]" : "bg-[#e8eefb]"
           )}
-          loading="eager"
-          onLoad={() => setImageLoaded(true)}
-          onError={() => setImageFailed(true)}
+          aria-hidden="true"
         />
+      )}
+      {showImage && imageUrl && (
+        <>
+          <img
+            ref={imgRef}
+            src={imageUrl}
+            alt=""
+            className={clsx(
+              "absolute inset-0 z-[1] h-full w-full transition-opacity duration-300",
+              isCover ? "object-cover" : "bg-[#f4f7ff] object-contain p-3",
+              imageLoaded ? "opacity-100" : "opacity-0"
+            )}
+            loading="eager"
+            decoding="async"
+            fetchPriority={fetchPriority}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageFailed(true)}
+          />
+          {isCover && (
+            <div
+              className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-[#06122d]/72 via-transparent to-transparent"
+              aria-hidden="true"
+            />
+          )}
+        </>
       )}
       <span className="relative z-10 inline-flex items-center gap-2 rounded-r-full bg-[#6938e8] px-4 py-2 text-xs font-semibold text-[#eef4ff] shadow-[0_8px_24px_rgba(79,52,225,0.36)]">
         {badge === "featured" ? (

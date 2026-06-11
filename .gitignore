@@ -9,3 +9,8 @@ dist
 coverage
 *.log
 ignore
+
+# Local Cursor / webcontainer build cache
+.container-lock-hash
+.container-env-hash
+.container-built-commit

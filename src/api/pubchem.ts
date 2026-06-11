@@ -1,11 +1,14 @@
 import type { ReviewListItem } from "@/types/review";
 
 const PUBCHEM_BASE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound";
-const PUBCHEM_MAX_CONCURRENT = 6;
-const PUBCHEM_MAX_TERMS = 4;
-const LS_CACHE_KEY = "descai:pubchem:v1";
+const PUBCHEM_MAX_CONCURRENT = 4;
+const PUBCHEM_MAX_TERMS = 10;
+const PUBCHEM_NEGATIVE_CACHE_MS = 10 * 60 * 1000;
+const LS_CACHE_KEY = "descai:pubchem:v2";
+const LS_TXID_CACHE_KEY = "descai:pubchem:txid:v1";
 
-const structureImageCache = new Map<string, string | null>();
+const structureImageCache = new Map<string, string>();
+const negativeLookupCache = new Map<string, number>();
 const txidStructureCache = new Map<string, string>();
 const inflightLookups = new Map<string, Promise<string | null>>();
 const preloadedUrls = new Set<string>();
@@ -49,6 +52,16 @@ const loadPersistedCache = () => {
         structureImageCache.set(compound.trim().toLowerCase(), url);
       }
     }
+
+    const txidRaw = window.localStorage.getItem(LS_TXID_CACHE_KEY);
+    if (txidRaw) {
+      const txidParsed = JSON.parse(txidRaw) as Record<string, string>;
+      for (const [txid, url] of Object.entries(txidParsed)) {
+        if (typeof txid === "string" && typeof url === "string" && url.length > 0) {
+          txidStructureCache.set(txid, url);
+        }
+      }
+    }
   } catch {
     // Ignore corrupt cache payloads.
   }
@@ -77,7 +90,25 @@ export const isPumpScienceReview = (review: ReviewListItem): boolean => {
   return normalizeToken(review.category) === "compounds";
 };
 
-const isLikelyAcronym = (term: string): boolean => /^[A-Z0-9]{2,8}$/.test(term.trim());
+const isLikelyAcronym = (term: string): boolean => /^[A-Z0-9]{2,6}$/.test(term.trim());
+
+const isNegativeLookup = (compoundKey: string): boolean => {
+  const expiresAt = negativeLookupCache.get(compoundKey);
+  if (!expiresAt) {
+    return false;
+  }
+
+  if (Date.now() >= expiresAt) {
+    negativeLookupCache.delete(compoundKey);
+    return false;
+  }
+
+  return true;
+};
+
+const rememberNegativeLookup = (compoundKey: string) => {
+  negativeLookupCache.set(compoundKey, Date.now() + PUBCHEM_NEGATIVE_CACHE_MS);
+};
 
 const splitCompoundList = (raw: string): string[] => {
   const trimmed = raw.replace(/\s+/g, " ").trim();
@@ -105,35 +136,53 @@ const splitCompoundList = (raw: string): string[] => {
   return candidates;
 };
 
+const prioritizeCompoundTerms = (candidates: string[]): string[] => {
+  const seen = new Set<string>();
+  const primary: string[] = [];
+  const acronyms: string[] = [];
+
+  for (const term of candidates) {
+    const cleaned = term.trim();
+    const key = cleaned.toLowerCase();
+    if (!key || key.length < 3 || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    if (isLikelyAcronym(cleaned)) {
+      acronyms.push(cleaned);
+    } else {
+      primary.push(cleaned);
+    }
+  }
+
+  const byWordCount = (left: string, right: string) =>
+    left.split(/\s+/).length - right.split(/\s+/).length || left.length - right.length;
+
+  primary.sort(byWordCount);
+  acronyms.sort((left, right) => left.length - right.length);
+
+  return [...primary, ...acronyms].slice(0, PUBCHEM_MAX_TERMS);
+};
+
 /** Build ordered PubChem search terms from review metadata. */
 export const extractCompoundSearchTerms = (review: ReviewListItem): string[] => {
-  const ordered: string[] = [];
+  const candidates: string[] = [];
 
   if (review.compound?.trim()) {
-    ordered.push(...splitCompoundList(review.compound));
+    candidates.push(...splitCompoundList(review.compound));
   }
 
   const title = review.title?.trim() ?? "";
   if (title && title !== review.compound?.trim()) {
-    ordered.push(...splitCompoundList(title));
+    candidates.push(...splitCompoundList(title));
   }
 
-  const seen = new Set<string>();
-  return ordered
-    .filter((term) => {
-      const cleaned = term.trim();
-      const key = cleaned.toLowerCase();
-      if (!key || key.length < 3 || seen.has(key) || isLikelyAcronym(cleaned)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    })
-    .slice(0, PUBCHEM_MAX_TERMS);
+  return prioritizeCompoundTerms(candidates);
 };
 
 const buildStructureImageUrl = (cid: number) =>
-  `${PUBCHEM_BASE}/cid/${cid}/PNG?record_type=2d&image_size=large`;
+  `${PUBCHEM_BASE}/cid/${cid}/PNG?record_type=2d&image_size=225x225`;
 
 export const preloadStructureImage = (url: string) => {
   if (!url || preloadedUrls.has(url)) return;
@@ -163,6 +212,45 @@ const cacheStructureUrl = (compoundKey: string, url: string) => {
   persistCompoundUrl(compoundKey, url);
 };
 
+const cacheTxidStructureUrl = (txid: string, url: string) => {
+  txidStructureCache.set(txid, url);
+  if (typeof window === "undefined") return;
+
+  try {
+    const raw = window.localStorage.getItem(LS_TXID_CACHE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    parsed[txid] = url;
+    window.localStorage.setItem(LS_TXID_CACHE_KEY, JSON.stringify(parsed));
+  } catch {
+    // Ignore quota or serialization errors.
+  }
+};
+
+const rememberTxidStructureUrl = (txid: string, url: string) => {
+  cacheTxidStructureUrl(txid, url);
+  preloadStructureImage(url);
+};
+
+const resolveFirstStructureUrl = async (terms: string[]): Promise<string | null> => {
+  for (const term of terms) {
+    const key = term.trim().toLowerCase();
+    const cached = structureImageCache.get(key);
+    if (cached) {
+      return cached;
+    }
+    if (isNegativeLookup(key)) {
+      continue;
+    }
+
+    const url = await fetchPubChemStructureImageUrl(term);
+    if (url) {
+      return url;
+    }
+  }
+
+  return null;
+};
+
 const lookupCidByName = async (compoundName: string): Promise<number | null> => {
   await acquirePubChemSlot();
   try {
@@ -188,6 +276,10 @@ export async function fetchPubChemStructureImageUrl(compoundName: string): Promi
     return cached;
   }
 
+  if (isNegativeLookup(key)) {
+    return null;
+  }
+
   const inflight = inflightLookups.get(key);
   if (inflight) {
     return inflight;
@@ -197,7 +289,7 @@ export async function fetchPubChemStructureImageUrl(compoundName: string): Promi
     try {
       const cid = await lookupCidByName(compoundName);
       if (!cid) {
-        structureImageCache.set(key, null);
+        rememberNegativeLookup(key);
         return null;
       }
 
@@ -206,7 +298,6 @@ export async function fetchPubChemStructureImageUrl(compoundName: string): Promi
       preloadStructureImage(url);
       return url;
     } catch {
-      structureImageCache.set(key, null);
       return null;
     } finally {
       inflightLookups.delete(key);
@@ -221,6 +312,7 @@ export async function fetchPubChemStructureImageUrl(compoundName: string): Promi
 export async function resolvePumpScienceStructureImage(review: ReviewListItem): Promise<string | null> {
   const cachedTxid = txidStructureCache.get(review.id);
   if (cachedTxid) {
+    preloadStructureImage(cachedTxid);
     return cachedTxid;
   }
 
@@ -233,20 +325,21 @@ export async function resolvePumpScienceStructureImage(review: ReviewListItem): 
     return null;
   }
 
-  for (const term of terms) {
-    const cached = structureImageCache.get(term.trim().toLowerCase());
-    if (cached) {
-      txidStructureCache.set(review.id, cached);
-      return cached;
-    }
-  }
-
-  const results = await Promise.all(terms.map((term) => fetchPubChemStructureImageUrl(term)));
-  const url = results.find((entry): entry is string => Boolean(entry)) ?? null;
+  const url = await resolveFirstStructureUrl(terms);
   if (url) {
-    txidStructureCache.set(review.id, url);
+    rememberTxidStructureUrl(review.id, url);
   }
   return url;
+};
+
+/** Begin downloading any cached structure PNGs for these txids immediately. */
+export const warmCachedStructureImages = (txids: string[]) => {
+  for (const txid of txids) {
+    const url = txidStructureCache.get(txid);
+    if (url) {
+      preloadStructureImage(url);
+    }
+  }
 };
 
 /** Prefetch structure images for a batch of reviews in parallel. */
@@ -258,18 +351,13 @@ export async function prefetchPumpScienceStructureImages(
     return {};
   }
 
-  const settled = await Promise.all(
-    pumpReviews.map(async (review) => {
-      const url = await resolvePumpScienceStructureImage(review);
-      return url ? ([review.id, url] as const) : null;
-    })
-  );
-
   const urls: Record<string, string> = {};
-  for (const entry of settled) {
-    if (entry) {
-      urls[entry[0]] = entry[1];
-      preloadStructureImage(entry[1]);
+
+  for (const review of pumpReviews) {
+    const url = await resolvePumpScienceStructureImage(review);
+    if (url) {
+      urls[review.id] = url;
+      preloadStructureImage(url);
     }
   }
 
