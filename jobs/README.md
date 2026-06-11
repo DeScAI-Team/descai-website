@@ -24,17 +24,18 @@ Copy root `.env.example` → `.env` and fill in:
 - **1claw:** `ONECLAW_API_KEY`, `ONECLAW_VAULT_ID`, `ONECLAW_AGENT_ID` (optional)
 - **D1:** `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (for orchestrator status polling)
 
-Key env knobs: `AKASH_MAX_USD_PER_HOUR` (default `2.80`), `AKASH_PARALLEL_DEPOSIT_UACT` (default `2000000` = $2 ACT race deposit per card), `AKASH_WINNER_DEPOSIT_UACT` (default `30000000` = $30 ACT total on winning deployment).
+Key env knobs: `AKASH_MAX_USD_PER_HOUR` (default `2.80`), `AKASH_PARALLEL_DEPOSIT_UACT` (default `2000000` = $2 ACT race deposit per card), `AKASH_WINNER_DEPOSIT_UACT` (default `30000000` = $30 ACT total on winning deployment), `AKASH_ACT_MINT_TIMEOUT_MS` (default `1800000` = 30 min BME settlement wait). On-chain BME enforces a **$10 ACT minimum per mint** — the script mints at least that much when topping up from AKT.
 
 ## Deploy flow (`deploy-test.mjs`)
 
 1. Fetch `AGE_SECRET_KEY_*` from 1claw and inject into SDL env (unquoted `KEY=value` lines).
 2. Close any **stale active deployments** on the wallet to recover escrow.
-3. Race **3 GPU cards** in parallel (H100 SXM, H100 PCIe, H200 SXM) with a **low deposit** ($2 ACT/card); first affordable bid wins.
-4. Close losing deployments, **top up winner escrow** to $30 ACT via `accountDeposit`, then create lease.
-5. Send manifest (`manifestToSortedJSON`), wait for lease ready.
-6. Poll Cloudflare D1 `orchestrator_status_events` until `status=done`.
-7. `closeDeployment` on-chain and return escrow.
+3. **Pre-fund ACT** (mint from AKT via BME if needed) to cover race escrow + winner top-up **before** any deployments are created. Waits for BME epoch settlement (default 30 min timeout).
+4. Race **3 GPU cards** in parallel (H100 SXM, H100 PCIe, H200 SXM) with a **low deposit** ($2 ACT/card); first affordable bid wins.
+5. Close losing deployments, **top up winner escrow** to $30 ACT via `accountDeposit`, then create lease.
+6. Send manifest (`manifestToSortedJSON`), wait for lease ready.
+7. Poll Cloudflare D1 `orchestrator_status_events` until `status=done`.
+8. `closeDeployment` on-chain and return escrow.
 
 **Ctrl+C** triggers cleanup and closes tracked deployments. Wait for `Deployments closed during shutdown.` before starting another run.
 

@@ -39,6 +39,11 @@ export function resolveWinnerDepositUact() {
   return DEFAULT_WINNER_DEPOSIT_UACT;
 }
 
+/** Free ACT needed in wallet before parallel deploy (race escrow + winner top-up). */
+export function computePrefundUact({ requiredRaceEscrow, winnerDepositUact }) {
+  return Math.max(requiredRaceEscrow, winnerDepositUact);
+}
+
 /** Race-card deposit (alias). */
 export function resolvePerCardDepositUact() {
   return resolveRaceDepositUact();

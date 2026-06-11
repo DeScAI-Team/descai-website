@@ -19,6 +19,7 @@ import {
   formatGpuCard,
   formatRequirements,
   loadDeployRequirements,
+  computePrefundUact,
   resolveRaceDepositUact,
   resolveWinnerDepositUact,
   scaleParallelCardsToBalance,
@@ -30,6 +31,7 @@ const err = (...args) => console.error(TAG, ...args);
 
 // Module-scope state for the SIGTERM/SIGINT handler.
 let sdk = null;
+let txSigner = null;
 let ownerAddress = null;
 let activeDseq = null;
 const activeDseqs = new Set();
@@ -40,11 +42,26 @@ const DEFAULT_MAX_USD_PER_HOUR = 2.8;
 const DEFAULT_LEASE_READY_TIMEOUT_MS = 10 * 60 * 1000;
 const DEFAULT_LEASE_POLL_INTERVAL_MS = 10_000;
 const DEFAULT_KEEPALIVE_MS = 30 * 60 * 1000;
-const DEFAULT_ACT_MINT_TIMEOUT_MS = 5 * 60 * 1000;
+const DEFAULT_ACT_MINT_TIMEOUT_MS = 30 * 60 * 1000;
 const DEFAULT_ACT_MINT_POLL_INTERVAL_MS = 10_000;
 const DEFAULT_BID_MAX_WAIT_MS = 30_000;
 const DEFAULT_BID_POLL_INTERVAL_MS = 10_000;
 const LEDGER_PENDING = 1;
+const LEDGER_EXECUTED = 2;
+const LEDGER_CANCELED = 3;
+const DEFAULT_BME_MIN_MINT_UACT = 10_000_000;
+const BMC_CANCEL_REASONS = {
+  0: "unknown",
+  1: "epsilon (output too small)",
+  2: "zero oracle price",
+  3: "insufficient funds",
+  4: "invalid denom",
+  5: "invalid amount",
+  6: "minimum mint (output below chain minimum ACT)",
+  7: "mint failed",
+  8: "burn failed",
+  9: "max attempts exceeded",
+};
 const DEPLOYMENT_ACTIVE = 1;
 const GAS_RESERVE_UAKT = Number(process.env.AKASH_GAS_RESERVE_UAKT) || 500_000;
 const ESCROW_RETURN_TIMEOUT_MS = Number(process.env.AKASH_ESCROW_RETURN_TIMEOUT_MS) || 30_000;
@@ -70,6 +87,25 @@ function debugLog(hypothesisId, location, message, data = {}) {
     }),
   }).catch(() => {});
   // #endregion
+}
+
+function initChainSdk({ rpc, grpc, mnemonic }) {
+  const txSigner = createStargateClient({
+    baseUrl: rpc,
+    signerMnemonic: mnemonic,
+    defaultGasPrice: "0.025uakt",
+  });
+  const sdkInstance = createChainNodeSDK({
+    query: { baseUrl: grpc },
+    tx: { signer: txSigner },
+  });
+  return { txSigner, sdk: sdkInstance };
+}
+
+async function refreshChainSdkAfterFunding({ rpc, grpc, mnemonic, address }) {
+  log("Refreshing wallet signer after ACT funding (sync account sequence)…");
+  ({ sdk } = initChainSdk({ rpc, grpc, mnemonic }));
+  ownerAddress = address;
 }
 
 function decodeQuantity(val) {
@@ -307,6 +343,17 @@ function uaktNeededForUact(requiredUact, aktUsdPrice) {
   return Math.max(1, Math.ceil((actNeeded / aktUsdPrice) * 1_000_000));
 }
 
+function resolveMintUact({ shortfall, minMintUact }) {
+  return Math.max(shortfall, minMintUact);
+}
+
+async function getMinMintUact(sdk) {
+  const params = await sdk.akash.bme.v1.getParams({});
+  const minMint = params.params?.minMint ?? params.params?.min_mint ?? [];
+  const entry = minMint.find((coin) => coin.denom === "uact");
+  return Number(entry?.amount ?? DEFAULT_BME_MIN_MINT_UACT);
+}
+
 async function getUactBalance(sdk, address) {
   const res = await sdk.cosmos.bank.v1beta1.getBalance({ address, denom: "uact" });
   return Number(res.balance?.amount ?? 0);
@@ -353,36 +400,156 @@ async function waitForEscrowReturn({ sdk, address, previousUact }) {
   return getUactBalance(sdk, address);
 }
 
-async function waitForActBalance({
+function formatTxHash(result) {
+  if (!result || typeof result !== "object") return null;
+  return result.transactionHash ?? result.hash ?? result.txHash ?? null;
+}
+
+function pendingRecordFromLedgerEntry(record) {
+  return record?.pendingRecord ?? record?.pending_record ?? null;
+}
+
+function canceledRecordFromLedgerEntry(record) {
+  return record?.canceledRecord ?? record?.canceled_record ?? null;
+}
+
+function formatCancelReason(record) {
+  const canceled = canceledRecordFromLedgerEntry(record);
+  const reason = Number(canceled?.cancelReason ?? canceled?.reason ?? -1);
+  const label = BMC_CANCEL_REASONS[reason] ?? `reason_${reason}`;
+  if (reason === 6) {
+    return `${label} — each BME mint must produce at least $10 ACT (10_000_000 uact)`;
+  }
+  return label;
+}
+
+function ledgerRecordIdKey(id) {
+  if (!id) return null;
+  const height = Number(id.height?.low ?? id.height);
+  const sequence = Number(id.sequence?.low ?? id.sequence);
+  const denom = id.denom ?? "";
+  const toDenom = id.toDenom ?? id.to_denom ?? "";
+  if (!Number.isFinite(height)) return null;
+  return `${height}:${sequence}:${denom}:${toDenom}`;
+}
+
+async function getWalletAktToActLedgerRecords(sdk, address, { status } = {}) {
+  const filters = { source: address };
+  if (status) filters.status = status;
+
+  const ledger = await sdk.akash.bme.v1.getLedgerRecords({
+    filters,
+    pagination: { limit: 20 },
+  });
+
+  return (ledger.records ?? []).filter((record) => {
+    const toDenom = record.id?.toDenom ?? record.id?.to_denom;
+    return toDenom === "uact";
+  });
+}
+
+async function getUactLedgerRecords(sdk, address) {
+  return getWalletAktToActLedgerRecords(sdk, address);
+}
+
+async function findPendingUactMint(sdk, address) {
+  const records = await getWalletAktToActLedgerRecords(sdk, address, {
+    status: "ledger_record_status_pending",
+  });
+  return records[0] ?? null;
+}
+
+async function findLedgerRecordByKey(sdk, address, recordKey) {
+  if (!recordKey) return null;
+  const records = await getWalletAktToActLedgerRecords(sdk, address);
+  return records.find((record) => ledgerRecordIdKey(record.id) === recordKey) ?? null;
+}
+
+async function waitForActFunding({
   sdk,
   address,
   requiredUact,
+  startedBankBalance,
+  startedUaktBalance,
+  mintSubmitted = false,
+  submittedRecordKey = null,
   timeoutMs = Number(process.env.AKASH_ACT_MINT_TIMEOUT_MS) || DEFAULT_ACT_MINT_TIMEOUT_MS,
   intervalMs = Number(process.env.AKASH_ACT_MINT_POLL_INTERVAL_MS) || DEFAULT_ACT_MINT_POLL_INTERVAL_MS,
 }) {
   const deadline = Date.now() + timeoutMs;
   const startedAt = Date.now();
+  let everSawPending = false;
+
   while (Date.now() < deadline) {
-    const current = await getUactBalance(sdk, address);
-    if (current >= requiredUact) {
-      log(`ACT balance ready — ${current} uact available.`);
-      return current;
+    const bank = await getUactBalance(sdk, address);
+    if (bank >= requiredUact) {
+      log(`ACT balance ready — ${bank} uact available.`);
+      return bank;
     }
+
+    const pending = await findPendingUactMint(sdk, address);
+    if (pending) everSawPending = true;
+
+    const uakt = await getUaktBalance(sdk, address);
+    const aktBurned =
+      startedUaktBalance != null && uakt < startedUaktBalance - 100_000;
+
     const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-    log(
-      `Waiting for ACT mint settlement… (${current}/${requiredUact} uact, ${elapsedSec}s — BME often takes 1–5 min)`
-    );
+    const elapsedMin = Math.max(1, Math.round(elapsedSec / 60));
+
+    if (pending) {
+      const pendingFields = pendingRecordFromLedgerEntry(pending);
+      const burn = pendingFields?.coinsToBurn ?? pendingFields?.coins_to_burn ?? {};
+      log(
+        `Waiting for BME settlement… (${bank}/${requiredUact} uact, ${elapsedMin}m — pending ${burn.amount ?? "?"} ${burn.denom ?? "uakt"} → uact)`
+      );
+    } else if (aktBurned) {
+      log(
+        `Waiting for ACT credit after AKT burn… (${bank}/${requiredUact} uact, ${elapsedMin}m — BME settlement in progress)`
+      );
+    } else {
+      log(
+        `Waiting for ACT mint settlement… (${bank}/${requiredUact} uact, ${elapsedMin}m — BME epoch settlement can take several minutes)`
+      );
+    }
+
+    if (submittedRecordKey) {
+      const submitted = await findLedgerRecordByKey(sdk, address, submittedRecordKey);
+      if (submitted?.status === LEDGER_CANCELED) {
+        throw new Error(
+          `BME mint was canceled (${formatCancelReason(submitted)}). ACT was not credited.`
+        );
+      }
+    }
+
+    if (
+      !mintSubmitted &&
+      !everSawPending &&
+      !aktBurned &&
+      !pending &&
+      bank <= startedBankBalance &&
+      elapsedSec >= 300
+    ) {
+      throw new Error(
+        `No BME mint activity after ${elapsedMin}m and ACT balance unchanged. Verify recent MsgMintACT on-chain.`
+      );
+    }
+
     await sleep(intervalMs);
   }
 
-  throw new Error(`Timed out after ${timeoutMs}ms waiting for ${requiredUact} uact.`);
+  const finalBank = await getUactBalance(sdk, address);
+  throw new Error(
+    `Timed out after ${Math.round(timeoutMs / 60_000)} min waiting for ${requiredUact} uact ` +
+      `(bank: ${finalBank}). Raise AKASH_ACT_MINT_TIMEOUT_MS if BME settlement is still pending.`
+  );
 }
 
-async function ensureActBalance({ sdk, address, requiredUact, aktUsdPrice }) {
+async function ensureActBalance({ sdk, address, requiredUact, aktUsdPrice, label = "ACT funding" }) {
   let current = await getUactBalance(sdk, address);
   if (current >= requiredUact) {
-    log(`ACT balance ok — ${current} uact available (${requiredUact} required).`);
-    return;
+    log(`${label} ok — ${current} uact available (${requiredUact} required).`);
+    return current;
   }
 
   const shortfall = requiredUact - current;
@@ -393,60 +560,99 @@ async function ensureActBalance({ sdk, address, requiredUact, aktUsdPrice }) {
     );
   }
 
-  const ledger = await sdk.akash.bme.v1.getLedgerRecords({
-    owner: address,
-    pagination: { limit: 5 },
-  });
-  const pendingMint = ledger.records?.find(
-    (record) =>
-      record.status === LEDGER_PENDING &&
-      record.pendingRecord?.denomToMint === "uact" &&
-      record.pendingRecord?.owner === address
-  );
-
-  const uaktToBurn = uaktNeededForUact(shortfall, aktUsdPrice);
-  const uaktAvailable = await getUaktBalance(sdk, address);
-  const uaktSpendable = Math.max(0, uaktAvailable - GAS_RESERVE_UAKT);
-
-  // #region agent log
-  debugLog("F", "deploy-test.mjs:ensureActBalance", "balance check before mint", {
-    currentUact: current,
-    requiredUact,
-    shortfall,
-    uaktToBurn,
-    uaktAvailable,
-    uaktSpendable,
-  });
-  // #endregion
-
-  if (uaktToBurn > uaktSpendable) {
-    const aktShort = ((uaktToBurn - uaktSpendable) / 1_000_000).toFixed(2);
-    throw new Error(
-      `Cannot mint ${shortfall} uact — wallet has ${current} uact free (need ${requiredUact} for deposit). ` +
-        `Mint needs ${uaktToBurn} uakt but only ${uaktSpendable} uakt is available after gas reserve ` +
-        `(~${aktShort} more AKT). Stale deployments are closed at startup to recover escrow; ` +
-        `otherwise lower AKASH_DEPOSIT or add AKT.`
-    );
-  }
+  let pendingMint = await findPendingUactMint(sdk, address);
+  const startedBankBalance = current;
+  const startedUaktBalance = await getUaktBalance(sdk, address);
+  let mintSubmitted = false;
+  let submittedRecordKey = null;
+  const minMintUact = await getMinMintUact(sdk);
+  const mintUact = resolveMintUact({ shortfall, minMintUact });
 
   if (!pendingMint) {
+    const uaktToBurn = uaktNeededForUact(mintUact, aktUsdPrice);
+    const uaktAvailable = await getUaktBalance(sdk, address);
+    const uaktSpendable = Math.max(0, uaktAvailable - GAS_RESERVE_UAKT);
+
+    // #region agent log
+    debugLog("F", "deploy-test.mjs:ensureActBalance", "balance check before mint", {
+      currentUact: current,
+      requiredUact,
+      shortfall,
+      uaktToBurn,
+      uaktAvailable,
+      uaktSpendable,
+    });
+    // #endregion
+
+    if (uaktToBurn > uaktSpendable) {
+      const aktShort = ((uaktToBurn - uaktSpendable) / 1_000_000).toFixed(2);
+      throw new Error(
+        `Cannot mint ${mintUact} uact — wallet has ${current} uact free (need ${requiredUact}). ` +
+          `Mint needs ${uaktToBurn} uakt but only ${uaktSpendable} uakt is available after gas reserve ` +
+          `(~${aktShort} more AKT). Stale deployments are closed at startup to recover escrow; ` +
+          `otherwise lower AKASH_WINNER_DEPOSIT_UACT or add AKT.`
+      );
+    }
+
+    if (mintUact > shortfall) {
+      log(
+        `BME minimum mint is ${minMintUact} uact ($${(minMintUact / 1_000_000).toFixed(2)} ACT) — ` +
+          `minting ~$${(mintUact / 1_000_000).toFixed(2)} ACT (shortfall $${(shortfall / 1_000_000).toFixed(2)} ACT).`
+      );
+    }
+
     log(
-      `Minting ACT — burning ${uaktToBurn} uakt to cover ${shortfall} uact shortfall @ $${aktUsdPrice}/AKT…`
+      `${label} — minting ACT via BME: burning ${uaktToBurn} uakt (~${(uaktToBurn / 1_000_000).toFixed(2)} AKT) ` +
+        `for ~${(mintUact / 1_000_000).toFixed(2)} ACT @ $${aktUsdPrice}/AKT…`
     );
-    await sdk.akash.bme.v1.mintACT({
+    const mintResult = await sdk.akash.bme.v1.mintACT({
       owner: address,
       to: address,
       coinsToBurn: { denom: "uakt", amount: String(uaktToBurn) },
     });
+    mintSubmitted = true;
+    submittedRecordKey = ledgerRecordIdKey(mintResult?.id);
+    const txHash = formatTxHash(mintResult);
+    if (txHash) {
+      log(`MintACT submitted — tx ${txHash}`);
+    } else {
+      log("MintACT submitted — waiting for BME ledger settlement (AKT burns when epoch executes).");
+    }
   } else {
-    log("ACT mint already pending on BME ledger; waiting for settlement…");
+    mintSubmitted = true;
+    submittedRecordKey = ledgerRecordIdKey(pendingMint.id);
+    const pendingFields = pendingRecordFromLedgerEntry(pendingMint);
+    const burn = pendingFields?.coinsToBurn ?? pendingFields?.coins_to_burn ?? {};
+    log(
+      `ACT mint already pending on BME ledger (${burn.amount ?? "?"} ${burn.denom ?? "uakt"} → uact); waiting for settlement…`
+    );
   }
 
-  log(
-    `Need ${requiredUact} uact total — have ${current}. ${pendingMint ? "Pending mint on chain." : "Mint submitted."} Waiting for BME credit…`
-  );
+  await waitForActFunding({
+    sdk,
+    address,
+    requiredUact,
+    startedBankBalance,
+    startedUaktBalance,
+    mintSubmitted,
+    submittedRecordKey,
+  });
 
-  await waitForActBalance({ sdk, address, requiredUact });
+  current = await getUactBalance(sdk, address);
+  if (current >= requiredUact) {
+    log(`${label} complete — ${current} uact available.`);
+    return current;
+  }
+
+  throw new Error(`${label} incomplete — ${current}/${requiredUact} uact after BME wait.`);
+}
+
+async function assertActBalance({ sdk, address, requiredUact, context }) {
+  const current = await getUactBalance(sdk, address);
+  if (current >= requiredUact) return current;
+  throw new Error(
+    `${context} needs ${requiredUact} uact free but wallet has ${current}. Pre-funding should have covered this.`
+  );
 }
 
 function formatEnvEntry(name, value) {
@@ -606,11 +812,11 @@ async function topUpWinnerDeposit({
     return;
   }
 
-  await ensureActBalance({
+  await assertActBalance({
     sdk,
     address,
     requiredUact: topUpUact,
-    aktUsdPrice,
+    context: "Winner escrow top-up",
   });
 
   log(
@@ -831,19 +1037,10 @@ export async function run(cliOptions = parseArgs()) {
   }
 
   log("Initialising wallet…");
-  const txSigner = createStargateClient({
-    baseUrl: AKASH_RPC,
-    signerMnemonic: AKASH_MNEMONIC,
-    defaultGasPrice: "0.025uakt",
-  });
+  ({ sdk, txSigner } = initChainSdk({ rpc: AKASH_RPC, grpc: AKASH_GRPC, mnemonic: AKASH_MNEMONIC }));
   const { address } = await txSigner.getAccount();
   ownerAddress = address;
   log("Wallet:", address);
-
-  sdk = createChainNodeSDK({
-    query: { baseUrl: AKASH_GRPC },
-    tx: { signer: txSigner },
-  });
 
   const uactBeforeClose = await getUactBalance(sdk, address);
   const staleClosed = await closeStaleActiveDeployments(address);
@@ -868,15 +1065,27 @@ export async function run(cliOptions = parseArgs()) {
     );
   }
 
+  const prefundUact = computePrefundUact({ requiredRaceEscrow, winnerDepositUact });
+
   log(
     `Parallel race — ${cardsToRun.length} GPU card(s), ${raceDepositUact} uact/card ($${(raceDepositUact / 1_000_000).toFixed(2)} ACT race), ${requiredRaceEscrow} uact race escrow; winner → $${(winnerDepositUact / 1_000_000).toFixed(2)} ACT (+$${(winnerTopUpUact / 1_000_000).toFixed(2)} after bid)`
   );
 
+  log(
+    `Pre-funding ACT before deploy — need ${prefundUact} uact ($${(prefundUact / 1_000_000).toFixed(2)} ACT) free; will mint from AKT via BME if short…`
+  );
   await ensureActBalance({
     sdk,
     address,
-    requiredUact: requiredRaceEscrow,
+    requiredUact: prefundUact,
     aktUsdPrice,
+    label: "Pre-deploy ACT funding",
+  });
+  await refreshChainSdkAfterFunding({
+    rpc: AKASH_RPC,
+    grpc: AKASH_GRPC,
+    mnemonic: AKASH_MNEMONIC,
+    address,
   });
 
   const bidPollIntervalMs =
