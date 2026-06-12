@@ -28,6 +28,9 @@ const ARWEAVE_GATEWAY_URL = (import.meta.env.VITE_ARWEAVE_GATEWAY_URL ?? "https:
 const FEATURED_REVIEW_DAO = "NootropicsDAO";
 
 let reviewIndexPromise: Promise<ReviewIndexResult> | null = null;
+/** Bump when index/search mapping changes so hot reload picks up new indexer data. */
+const REVIEW_INDEX_GENERATION = 4;
+let reviewIndexGenerationLoaded = 0;
 /** Bump when review mapping shape changes so stale browser-session cache is ignored. */
 const REVIEW_CACHE_VERSION = 2;
 const reviewPromiseCache = new Map<string, Promise<Review>>();
@@ -101,6 +104,99 @@ const tagsToMap = (tags: ArweaveTag[]): Map<string, string> => {
   return map;
 };
 
+const SUMMARY_TITLE_TAG_KEYS = [
+  "DaoName",
+  "dao_name",
+  "daoName",
+  "Dao",
+  "dao",
+  "Name",
+  "name",
+  "ResearchName",
+  "research_name",
+  "Compounds",
+  "compounds",
+  "Title",
+  "title"
+];
+const SUMMARY_PLATFORM_TAG_KEYS = ["platform", "Platform"];
+const SUMMARY_CATEGORY_TAG_KEYS = ["category", "Category"];
+const SUMMARY_COMPOUND_TAG_KEYS = ["compounds", "Compounds", "compound", "Compound", "research_name", "ResearchName"];
+const SUMMARY_DAO_TAG_KEYS = ["DaoName", "dao_name", "daoName", "Dao", "dao"];
+const SUMMARY_SYMBOL_TAG_KEYS = ["symbol", "Symbol", "ticker", "Ticker", "token", "Token", "ipt", "IPT"];
+const SUMMARY_SEARCH_DOCUMENT_KEYS = [
+  "name",
+  "title",
+  "research_name",
+  "research_dao",
+  "dao_name",
+  "DaoName",
+  "compounds",
+  "compound",
+  "symbol",
+  "ticker",
+  "token"
+];
+
+const lookupSummaryTag = (tagMap: Map<string, string>, keys: string[]): string | null => {
+  for (const key of keys) {
+    const value = tagMap.get(key)?.trim();
+    if (value) return value;
+  }
+  const lower = new Map<string, string>();
+  for (const [name, value] of tagMap) {
+    lower.set(name.toLowerCase(), value);
+  }
+  for (const key of keys) {
+    const value = lower.get(key.toLowerCase())?.trim();
+    if (value) return value;
+  }
+  return null;
+};
+
+const collectSearchLabels = (
+  document: ArweaveDocument,
+  tagMap: Map<string, string>,
+  fields: {
+    title: string;
+    dao_name: string;
+    compound: string | null;
+    symbol: string | null;
+    ticker: string | null;
+  }
+): string[] => {
+  const labels = new Set<string>();
+  const add = (value: string | null | undefined) => {
+    if (typeof value === "string" && value.trim()) {
+      labels.add(value.trim());
+    }
+  };
+
+  add(fields.title);
+  add(fields.dao_name);
+  add(fields.compound);
+  add(fields.symbol);
+  add(fields.ticker);
+
+  for (const key of SUMMARY_SEARCH_DOCUMENT_KEYS) {
+    add(readString(document, [key]));
+  }
+
+  for (const keys of [
+    SUMMARY_TITLE_TAG_KEYS,
+    SUMMARY_COMPOUND_TAG_KEYS,
+    SUMMARY_SYMBOL_TAG_KEYS,
+    SUMMARY_DAO_TAG_KEYS
+  ]) {
+    add(lookupSummaryTag(tagMap, keys));
+    for (const key of keys) {
+      add(tagMap.get(key));
+    }
+  }
+
+  return [...labels];
+};
+
 const parseSummary = (
   txid: string,
   document: ArweaveDocument,
@@ -108,23 +204,51 @@ const parseSummary = (
   tags: ArweaveTag[] = []
 ) => {
   const tagMap = tagsToMap(tags);
+  const tagTitle = lookupSummaryTag(tagMap, SUMMARY_TITLE_TAG_KEYS);
+  // Prefer Arweave tags (same as home sidebars) so tickers like DOGEDNA stay searchable.
   const title =
+    tagTitle ??
     readString(document, ["name", "title", "research_name", "research_dao", "dao_name"]) ??
     readString(document, ["compounds"]) ??
-    tagMap.get("compounds")?.trim() ??
-    tagMap.get("research_name")?.trim() ??
-    tagMap.get("name")?.trim() ??
-    tagMap.get("DaoName")?.trim() ??
-    tagMap.get("dao_name")?.trim() ??
     "Untitled Review";
-  const dao_name = readString(document, ["dao_name", "research_dao", "DaoName"]) ?? DEFAULT_REVIEW_AUTHOR;
-  const platform = readString(document, ["platform"]) ?? tagMap.get("platform")?.trim() ?? null;
-  const category = readString(document, ["category"]) ?? tagMap.get("category")?.trim() ?? null;
-  const compound = readString(document, ["compounds"]) ?? tagMap.get("compounds")?.trim() ?? null;
-  const date = readString(document, ["date", "review_date", "created_at"]) ?? fallbackDate ?? new Date(0).toISOString();
-  const average_score = readNumber(document, ["composite_score", "average_score"]);
+  const dao_name =
+    readString(document, ["dao_name", "research_dao", "DaoName"]) ??
+    lookupSummaryTag(tagMap, SUMMARY_DAO_TAG_KEYS) ??
+    DEFAULT_REVIEW_AUTHOR;
+  const platform =
+    readString(document, ["platform"]) ?? lookupSummaryTag(tagMap, SUMMARY_PLATFORM_TAG_KEYS) ?? null;
+  const category =
+    readString(document, ["category"]) ?? lookupSummaryTag(tagMap, SUMMARY_CATEGORY_TAG_KEYS) ?? null;
+  const compound =
+    readString(document, ["compounds", "compound"]) ??
+    lookupSummaryTag(tagMap, SUMMARY_COMPOUND_TAG_KEYS) ??
+    null;
+  const symbol =
+    readString(document, ["symbol", "token"]) ?? lookupSummaryTag(tagMap, SUMMARY_SYMBOL_TAG_KEYS) ?? null;
+  const ticker =
+    readString(document, ["ticker"]) ??
+    lookupSummaryTag(tagMap, ["ticker", "Ticker"]) ??
+    (symbol && symbol.length <= 12 ? symbol : null);
+  const date =
+    fallbackDate ??
+    readString(document, ["date", "review_date", "created_at"]) ??
+    lookupSummaryTag(tagMap, ["date", "Date", "published", "published_at", "review_date"]) ??
+    new Date(0).toISOString();
+  const average_score =
+    readNumber(document, ["composite_score", "average_score"]) ??
+    readNumber(
+      Object.fromEntries(tagMap) as ArweaveDocument,
+      ["composite_score", "average_score", "Composite_Score"]
+    );
+  const search_labels = collectSearchLabels(document, tagMap, {
+    title,
+    dao_name,
+    compound,
+    symbol,
+    ticker
+  });
 
-  return { txid, title, dao_name, platform, category, compound, date, average_score };
+  return { txid, title, dao_name, platform, category, compound, symbol, ticker, search_labels, date, average_score };
 };
 
 const normalizeIndexTransactions = (payload: unknown): ArweaveIndexTransaction[] => {
@@ -169,6 +293,10 @@ export async function fetchArweaveTransactionTags(txid: string): Promise<Arweave
 }
 
 export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewIndexResult> {
+  if (reviewIndexGenerationLoaded !== REVIEW_INDEX_GENERATION) {
+    reviewIndexPromise = null;
+    reviewIndexGenerationLoaded = REVIEW_INDEX_GENERATION;
+  }
   if (!forceRefresh && reviewIndexPromise) {
     return reviewIndexPromise;
   }
@@ -176,34 +304,13 @@ export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewInde
   reviewIndexPromise = (async () => {
     const transactions = await fetchIndexTransactions();
 
-    const documents = await Promise.allSettled(
-      transactions.map(async (transaction) => {
+    const summaries = transactions
+      .map((transaction) => {
         const txid = transaction.txid ?? transaction.id;
-        if (!txid) {
-          throw new Error("Missing transaction id");
-        }
-
-        const document = await fetchArweaveDocument(txid);
-        return parseSummary(txid, document, transaction.timestamp ?? null, transaction.tags ?? []);
+        if (!txid) return null;
+        return parseSummary(txid, {}, transaction.timestamp ?? null, transaction.tags ?? []);
       })
-    );
-
-    const summaries = documents
-      .filter(
-        (
-          result
-        ): result is PromiseFulfilledResult<{
-          txid: string;
-          title: string;
-          dao_name: string | null;
-          platform: string | null;
-          category: string | null;
-          compound: string | null;
-          date: string;
-          average_score: number | null;
-        }> => result.status === "fulfilled"
-      )
-      .map((result) => result.value)
+      .filter((summary): summary is NonNullable<typeof summary> => summary !== null)
       .sort((left, right) => compareByScoreDesc({ average_score: left.average_score, created_at: left.date }, { average_score: right.average_score, created_at: right.date }));
 
     if (!summaries.length) {
@@ -229,6 +336,9 @@ export async function fetchReviewIndex(forceRefresh = false): Promise<ReviewInde
         platform: summary.platform,
         category: summary.category,
         compound: summary.compound,
+        symbol: summary.symbol,
+        ticker: summary.ticker,
+        search_labels: summary.search_labels,
         average_score: summary.average_score,
         featured: featuredSet.has(summary.txid)
       })),

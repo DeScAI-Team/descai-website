@@ -34,6 +34,10 @@ export type ReviewListItem = {
   platform?: string | null;
   category?: string | null;
   compound?: string | null;
+  symbol?: string | null;
+  ticker?: string | null;
+  /** Extra labels from Arweave tags (tickers, alt titles) for search. */
+  search_labels?: string[];
   average_score?: number | null;
   featured?: boolean;
   doctype?: ReviewDocType | null;

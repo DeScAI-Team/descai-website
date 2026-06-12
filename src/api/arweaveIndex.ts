@@ -123,23 +123,28 @@ const ARWEAVE_EXIT_TOKEN = runtimeProcess.process?.env?.ARWEAVE_EXIT_TOKEN;
 const UPSTREAM_CACHE_TTL_MS = 5 * 60 * 1000;
 const upstreamCache = new Map<string, CachedJsonResponse>();
 
-const WALLETS = [
-  "2-qaBPnv_kkVKcIcZjNympauWg2lepbuYmeEuMA3jls"
-  // "Add_More_Wallet_IDs_Here",
-];
+const resolveIndexerWallets = (): string[] => {
+  const candidates = [
+    runtimeProcess.process?.env?.ARWEAVE_WALLET_ADDRESS,
+    runtimeProcess.process?.env?.VITE_ARWEAVE_WALLET_ADDRESS,
+    runtimeProcess.process?.env?.VITE_ARWEAVE_OVERVIEW_AGENT_ADDRESS
+  ];
+  const fromEnv = [...new Set(candidates.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))];
+  if (fromEnv.length) return fromEnv;
+  return ["2-qaBPnv_kkVKcIcZjNympauWg2lepbuYmeEuMA3jls"];
+};
+
+const WALLETS = resolveIndexerWallets();
 
 type IndexTagFilter = { name: string; values: string[] };
 
 /** Overview crawls (home sidebars + review index). */
 const INDEX_OVERVIEW_TAG_FILTERS: IndexTagFilter[] = [{ name: "doctype", values: ["overview"] }];
 
-/** Compound reviews do not get overview txs; index them separately. */
-const INDEX_COMPOUND_REVIEW_TAG_FILTERS: IndexTagFilter[] = [
-  { name: "doctype", values: ["review"] },
-  { name: "category", values: ["compounds"] }
-];
+/** All review uploads (compounds, ResearchDAO, Article, …). */
+const INDEX_REVIEW_TAG_FILTERS: IndexTagFilter[] = [{ name: "doctype", values: ["review"] }];
 
-const INDEX_TAG_FILTER_SETS = [INDEX_OVERVIEW_TAG_FILTERS, INDEX_COMPOUND_REVIEW_TAG_FILTERS] as const;
+const INDEX_TAG_FILTER_SETS = [INDEX_OVERVIEW_TAG_FILTERS, INDEX_REVIEW_TAG_FILTERS] as const;
 
 // Arweave GraphQL Query
 const GQL_QUERY = `
@@ -581,6 +586,7 @@ app.get("/api/bio/liquid-agents", async (_req: Request, res: Response) => {
 
 const server = app.listen(PORT, () => {
   console.log(`API server listening: http://localhost:${PORT}/api/index`);
+  console.log(`Arweave index wallets: ${WALLETS.join(", ")}`);
 });
 
 // Endpoint to cleanly exit the API

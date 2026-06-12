@@ -9,15 +9,11 @@ Standalone API service for indexing Arweave transactions and proxying Molecule t
 
 ## Configuration
 
-### Adding Wallets
-To track transactions for additional Arweave wallets, add their Wallet IDs to the `WALLETS` array located at the top of `src/api/arweaveIndex.ts`:
+### Indexing wallets
 
-```typescript
-const WALLETS = [
-  "-tFrKF2NuT5_X1cNOTHJmZw3xhss0K5WnXl3wYxRYLM", 
-  // "Add_More_Wallet_IDs_Here"
-];
-```
+The indexer reads transactions from **`ARWEAVE_WALLET_ADDRESS`** in `.env` (same wallet the home sidebar uses). Optional overrides: `VITE_ARWEAVE_WALLET_ADDRESS`, `VITE_ARWEAVE_OVERVIEW_AGENT_ADDRESS`.
+
+If none are set, it falls back to the legacy hardcoded wallet in `src/api/arweaveIndex.ts`.
 
 ## Getting Started
 
